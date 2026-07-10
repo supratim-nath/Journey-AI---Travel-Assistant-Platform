@@ -7,6 +7,9 @@ const { validateTrip } = require('../middleware/validate');
 // 0. Fetch Unsplash Image Proxy
 router.get('/image/unsplash', tripController.getUnsplashImage);
 
+// Warm up AI backend
+router.get('/warmup', tripController.warmupAI);
+
 // 1. Generate the preview (No DB save)
 router.post('/generate-preview', validateTrip, tripController.generatePreview);
 

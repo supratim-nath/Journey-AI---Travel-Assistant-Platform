@@ -3,6 +3,20 @@ const Trip = require('../models/Trip');
 const aiService = require('../services/aiService');
 
 /**
+ * Warm up AI backend
+ */
+exports.warmupAI = async (req, res) => {
+    try {
+        const AI_URL = process.env.AI_BACKEND_URL || 'http://localhost:8000';
+        const raw_ai_url = AI_URL.endsWith('/') ? AI_URL.slice(0, -1) : AI_URL;
+        fetch(`${raw_ai_url}/api/health`).catch(() => {});
+        res.json({ success: true, message: "AI warmup request dispatched." });
+    } catch (e) {
+        res.json({ success: true, message: "AI warmup skipped." });
+    }
+};
+
+/**
  * 0. GET UNSPLASH IMAGE (SECURE PROXY)
  * Returns a high-res cover photo URL without exposing the API key to the client.
  */

@@ -420,8 +420,9 @@
             setTimeout(() => { toast.style.transform = 'translateX(120%)'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
-        // Auto-populate destination from URL query parameter
+        // Auto-populate destination from URL query parameter & warm up AI backend
         document.addEventListener('DOMContentLoaded', () => {
+            fetch('/api/trips/warmup').catch(() => {});
             const urlParams = new URLSearchParams(window.location.search);
             const dest = urlParams.get('dest');
             if (dest) {
