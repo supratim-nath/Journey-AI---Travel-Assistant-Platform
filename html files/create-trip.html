@@ -301,6 +301,7 @@
 
         async function generateItinerary() {
             const btn = document.getElementById('submitBtn');
+            if (btn.disabled) return;
             const btnText = document.getElementById('btnText');
             const spinner = document.getElementById('btnSpinner');
 
@@ -374,6 +375,11 @@
                 if (result.success) {
                     // SUCCESS: Store the generated data in sessionStorage
                     sessionStorage.setItem('tempTrip', JSON.stringify(result.data));
+                    if (result.warning) {
+                        sessionStorage.setItem('tripWarning', result.warning);
+                    } else {
+                        sessionStorage.removeItem('tripWarning');
+                    }
                     btnText.innerText = "Redirecting...";
                     window.location.href = `itinerary.html`;
                 } else {

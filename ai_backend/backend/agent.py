@@ -1,8 +1,11 @@
 import os
 import json
 import re
+import time
+import random
 from google import genai
 from google.genai import types
+from google.api_core import exceptions as google_exceptions
 from dotenv import load_dotenv
 from backend.memory import get_history, add_message
 
@@ -663,9 +666,18 @@ def get_mock_response(contents, current_itinerary=None):
 
     return "Hello! I am Ritu, your AI Travel Planner. I can help you customize your trip details. Let me know if you would like to:\n- **Add** a place: 'Add a visit to **Chapora Fort** on Day 2'\n- **Remove** a place: 'Remove **Mumbai Museum** from Day 3'\n- **Replace** a place: 'Replace **Traditional Cafe** with **Bandra Sea Link** on Day 1'\n- **Ask details**: 'What is scheduled on Day 2?' or ask about food, hotels, transit, weather, packing, and safety!"
 
+_CLIENTS_CACHE = {}
+
+def _get_client(api_key: str):
+    """Retrieve or create a cached genai.Client instance."""
+    if api_key not in _CLIENTS_CACHE:
+        _CLIENTS_CACHE[api_key] = genai.Client(api_key=api_key)
+    return _CLIENTS_CACHE[api_key]
+
 def _generate_with_fallback(contents, config=None, current_itinerary=None, custom_system_prompt=None):
     """Fallback loop pattern to try different models and API keys if one fails"""
     last_error = "No API keys configured."
+    is_rate_limited = False
     
     if not custom_system_prompt:
         custom_system_prompt = SYSTEM_PROMPT
@@ -691,36 +703,65 @@ def _generate_with_fallback(contents, config=None, current_itinerary=None, custo
 
     if API_KEYS:
         for api_key in API_KEYS:
-            client = genai.Client(api_key=api_key)
+            try:
+                client = _get_client(api_key)
+            except Exception as client_err:
+                print(f"[Agent] Failed to instantiate Gemini client for key prefix {api_key[:8]}...: {client_err}")
+                continue
             
             for model in MODEL_NAMES:
-                try:
-                    # Always create a fresh config to avoid mutating the shared global object
-                    if config:
-                        active_config = types.GenerateContentConfig(
-                            max_output_tokens=config.max_output_tokens or 8192,
-                            temperature=config.temperature or 0.7,
-                            system_instruction=custom_system_prompt
+                # Retry strategy: up to 2 retries for transient errors
+                max_retries = 2
+                for attempt in range(max_retries + 1):
+                    try:
+                        # Always create a fresh config to avoid mutating the shared global object
+                        if config:
+                            active_config = types.GenerateContentConfig(
+                                max_output_tokens=config.max_output_tokens or 8192,
+                                temperature=config.temperature or 0.7,
+                                system_instruction=custom_system_prompt
+                            )
+                        else:
+                            active_config = types.GenerateContentConfig(
+                                max_output_tokens=8192,
+                                temperature=0.7,
+                                system_instruction=custom_system_prompt
+                            )
+                        
+                        response = client.models.generate_content(
+                            model=model, 
+                            contents=contents, 
+                            config=active_config
                         )
-                    else:
-                        active_config = types.GenerateContentConfig(
-                            max_output_tokens=8192,
-                            temperature=0.7,
-                            system_instruction=custom_system_prompt
-                        )
-                    response = client.models.generate_content(
-                        model=model, 
-                        contents=contents, 
-                        config=active_config
-                    )
-                    if response.text:
-                        return response.text
-                except Exception as e:
-                    last_error = str(e)
-                    print(f"[Agent] Model {model} failed on a key: {last_error}")
-                    continue
+                        if response.text:
+                            return response.text
+                    except google_exceptions.ResourceExhausted as q_err:
+                        # HTTP 429 - Resource Exhausted / Rate limit: Do NOT retry on this key, cycle immediately
+                        last_error = f"Gemini API rate limit exceeded on model {model}."
+                        is_rate_limited = True
+                        print(f"⚠️ [Agent] Key prefix {api_key[:8]} rate-limited (429) on model {model}: {q_err}. Cycling to next key...")
+                        break # Break retry loop to try the next key
+                    except (google_exceptions.ServiceUnavailable, google_exceptions.DeadlineExceeded, ConnectionError) as trans_err:
+                        # Transient errors: retry with exponential backoff and jitter
+                        last_error = str(trans_err)
+                        if attempt < max_retries:
+                            sleep_time = (2 ** attempt) + random.uniform(0.1, 1.0)
+                            print(f"🔄 [Agent] Transient error: {trans_err}. Retrying in {sleep_time:.2f}s...")
+                            time.sleep(sleep_time)
+                        else:
+                            print(f"❌ [Agent] Transient error retries exhausted on model {model}: {trans_err}")
+                            break
+                    except Exception as other_err:
+                        last_error = str(other_err)
+                        print(f"❌ [Agent] Model {model} failed on key prefix {api_key[:8]}...: {last_error}")
+                        break
     
-    # Fallback to mock generation if no keys or all failed
+    # If we are rate limited on all keys, raise a ResourceExhausted exception so route controllers know
+    if is_rate_limited:
+        print("🚨 [Agent] All API keys have exceeded their Gemini quota rate limit.")
+        raise google_exceptions.ResourceExhausted(f"All configured Gemini API keys are rate limited. {last_error}")
+        
+    # Otherwise fallback to mock generation
     print("[Agent] Falling back to Mock Generation...")
     return get_mock_response(contents, current_itinerary)
 

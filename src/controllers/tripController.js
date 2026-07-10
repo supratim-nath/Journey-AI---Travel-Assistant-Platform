@@ -103,6 +103,7 @@ exports.generatePreview = async (req, res) => {
         // Send the data back to the frontend to be stored in sessionStorage
         res.status(200).json({
             success: true,
+            warning: generatedPlan.warning || null,
             data: {
                 destination,
                 days,

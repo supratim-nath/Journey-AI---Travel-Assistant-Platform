@@ -2326,6 +2326,15 @@
             }
 
             currentTripData = trip;
+
+            // Check for propagated fallback warnings from trip creation page
+            const warning = sessionStorage.getItem('tripWarning');
+            if (warning) {
+                setTimeout(() => {
+                    showNotification(warning, 'info');
+                    sessionStorage.removeItem('tripWarning');
+                }, 800);
+            }
             
             if (trip) {
                 updateWeatherBanner(trip.destination);

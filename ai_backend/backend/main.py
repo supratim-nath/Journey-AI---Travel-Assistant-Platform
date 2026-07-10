@@ -1,13 +1,20 @@
 import re
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from google.api_core import exceptions as google_exceptions
 from backend.schemas import ChatRequest, ChatResponse, ItineraryUpdate
 from backend.schemas import ItineraryRequest, ItineraryResponse
 from backend.schemas import SuggestionRequest, SuggestionResponse
 from backend.agent import chat_with_agent, get_curated_suggestions
 from backend.itinerary_agent import generate_itinerary
+from backend.cache import TTLCache, SingleFlight
 
 app = FastAPI(title="India Travel AI")
+
+# Instantiate Caches and Request Collapsers
+itinerary_cache = TTLCache(maxsize=100, ttl=3600) # Cache itineraries for 1 hour
+suggestions_cache = TTLCache(maxsize=100, ttl=1800) # Cache suggestions for 30 mins
+flight_coordinator = SingleFlight()
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,9 +62,10 @@ def chat(request: ChatRequest):
             request.current_itinerary,
             request.history
         )
+    except google_exceptions.ResourceExhausted as q_err:
+        raise HTTPException(status_code=429, detail="Gemini API rate limit exceeded. Ritu is catching her breath! Please retry in 60 seconds.")
     except Exception as e:
         import logging
-        from fastapi import HTTPException
         logging.error(f"Error in chat endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Travel co-pilot experienced a temporary processing delay. Please retry.")
 
@@ -101,13 +109,29 @@ def chat(request: ChatRequest):
 # Itinerary generator endpoint
 @app.post("/generate-itinerary")
 def create_itinerary(request: ItineraryRequest):
+    data = request.model_dump() if hasattr(request, "model_dump") else request.dict()
+    dest = str(data.get('destination', 'India')).strip().lower()
+    days = str(data.get('days', 3))
+    budget = str(data.get('budget', 'Variable'))
+    vibe = str(data.get('interests', 'Attractions'))
+    traveler = str(data.get('traveler_type', 'Any'))
+    cache_key = f"itinerary:{dest}:{days}:{budget}:{vibe}:{traveler}"
+    
+    # 1. Read Cache
+    cached_result = itinerary_cache.get(cache_key)
+    if cached_result:
+        return ItineraryResponse(itinerary=cached_result)
+        
+    # 2. Not cached - run in SingleFlight collapser
     try:
-        data = request.model_dump() if hasattr(request, "model_dump") else request.dict()
-        result = generate_itinerary(data)
+        result = flight_coordinator.run(cache_key, generate_itinerary, data)
+        # Write Cache
+        itinerary_cache.set(cache_key, result)
         return ItineraryResponse(itinerary=result)
+    except google_exceptions.ResourceExhausted as q_err:
+        raise HTTPException(status_code=429, detail="Gemini API rate limit exceeded. Ritu is catching her breath! Please retry in 60 seconds.")
     except Exception as e:
         import logging
-        from fastapi import HTTPException
         logging.error(f"Error in generate-itinerary endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to generate the trip itinerary.")
 
@@ -115,12 +139,25 @@ def create_itinerary(request: ItineraryRequest):
 # AI Suggestions endpoint
 @app.post("/suggestions", response_model=SuggestionResponse)
 def compute_suggestions(request: SuggestionRequest):
+    hist = ",".join(sorted(request.history)) if request.history else "none"
+    query = (request.query or "").strip().lower()
+    cache_key = f"suggestions:{hist}:{query}"
+    
+    # 1. Read Cache
+    cached_result = suggestions_cache.get(cache_key)
+    if cached_result:
+        return SuggestionResponse(**cached_result)
+        
+    # 2. Not cached - run in SingleFlight collapser
     try:
-        result = get_curated_suggestions(request.history, request.query)
+        result = flight_coordinator.run(cache_key, get_curated_suggestions, request.history, request.query)
+        # Write Cache
+        suggestions_cache.set(cache_key, result)
         return SuggestionResponse(**result)
+    except google_exceptions.ResourceExhausted as q_err:
+        raise HTTPException(status_code=429, detail="Gemini API rate limit exceeded. Ritu is catching her breath! Please retry in 60 seconds.")
     except Exception as e:
         import logging
-        from fastapi import HTTPException
         logging.error(f"Error in suggestions endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to compute travel recommendations.")
 

@@ -2,6 +2,7 @@
 
 exports.generateItinerary = async ({ destination, days, budget, vibe, traveler_type }) => {
     let rawText = "";
+    let warning = null;
 
     try {
         const raw_ai_url = process.env.AI_BACKEND_URL || 'http://localhost:8000';
@@ -37,6 +38,12 @@ exports.generateItinerary = async ({ destination, days, budget, vibe, traveler_t
         
     } catch (err) {
         console.warn("⚠️ AI Backend down or failed. Using local JS itinerary fallback database. Error:", err.message);
+        
+        if (err.message.includes("rate limit") || err.message.includes("429") || err.message.includes("ResourceExhausted") || err.message.includes("breath")) {
+            warning = "Gemini API rate limit exceeded. Ritu has generated a standard custom itinerary offline for you.";
+        } else {
+            warning = "AI Service temporarily unavailable. Ritu has generated a standard custom itinerary offline for you.";
+        }
         
         const MOCK_ITINERARIES = {
             goa: [
@@ -143,6 +150,7 @@ exports.generateItinerary = async ({ destination, days, budget, vibe, traveler_t
 
     return {
         overview: `A custom ${vibe} trip to ${destination}.`,
-        schedule: schedule
+        schedule: schedule,
+        warning: warning
     };
 };
