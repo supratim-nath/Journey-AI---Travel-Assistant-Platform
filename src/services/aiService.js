@@ -98,7 +98,7 @@ exports.generateItinerary = async ({ destination, days, budget, vibe, traveler_t
         const destClean = (destination || '').trim().toLowerCase();
         let matchedKey = 'delhi';
         for (const key of Object.keys(MOCK_ITINERARIES)) {
-            if (destClean.includes(key)) {
+            if (destClean.includes(key) || (key === 'keral' && destClean.includes('munnar'))) {
                 matchedKey = key;
                 break;
             }
