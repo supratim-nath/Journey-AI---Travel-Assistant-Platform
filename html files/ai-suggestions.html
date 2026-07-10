@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Discover hidden gems, curated food recommendations, and AI-powered travel insights for your Indian destination on JourneyAI.">
+    <title>Journey AI — Curated Suggestions</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Apply theme immediately to prevent flashing
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <style>
+        :root {
+            --primary: #38BDF8;
+            --bg: #F8FAFC;
+            --text: #0F172A;
+            --glass: rgba(255, 255, 255, 0.45);
+            --border: rgba(255, 255, 255, 0.5);
+            --card-bg: rgba(255, 255, 255, 0.6);
+        }
+
+        [data-theme='dark'] {
+            --bg: #0F172A;
+            --text: #F8FAFC;
+            --glass: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(30, 41, 59, 0.5);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        #spotlight {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(56, 189, 248, 0.12) 0%, transparent 40%);
+            z-index: 1;
+        }
+
+        .iphone-glass {
+            background: var(--glass);
+            backdrop-filter: blur(15px) saturate(180%);
+            -webkit-backdrop-filter: blur(15px) saturate(180%);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04);
+            transition: all 0.4s ease;
+            border-radius: 28px;
+        }
+
+        .iphone-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 28px;
+        }
+
+        .iphone-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+            background: var(--glass);
+        }
+
+        .category-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+        .filter-btn.active {
+            background: var(--primary);
+            color: #0F172A;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+            border-color: var(--primary);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        /* Shimmer Animation */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer-bg {
+            background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        [data-theme='light'] .shimmer-bg {
+            background: linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.03) 75%);
+            background-size: 200% 100%;
+        }
+
+        /* Floating Favorites Button & Drawer */
+        .floating-favorites-btn {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            z-index: 150;
+            background: var(--glass);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 9999px;
+            padding: 12px 20px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+        }
+        .floating-favorites-btn:hover {
+            transform: scale(1.06) translateY(-2px);
+            box-shadow: 0 14px 30px rgba(56, 189, 248, 0.3);
+            border-color: var(--primary);
+        }
+        .floating-favorites-btn:active {
+            transform: scale(0.96) translateY(0);
+        }
+        .favorites-drawer {
+            position: fixed;
+            bottom: 84px;
+            left: 24px;
+            z-index: 150;
+            width: 320px;
+            max-height: 400px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 24px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(20px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .favorites-drawer.active {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .fav-heart-btn {
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+        .fav-heart-btn:hover {
+            transform: scale(1.2);
+        }
+        @media (max-width: 768px) {
+            .floating-favorites-btn {
+                bottom: 16px;
+                left: 16px;
+                padding: 10px 16px;
+                font-size: 0.72rem;
+            }
+            .favorites-drawer {
+                bottom: 74px;
+                left: 16px;
+                width: calc(100% - 32px);
+            }
+        }
+    </style>
+</head>
+
+<body onmousemove="updateSpotlight(event)">
+    <div id="spotlight"></div>
+
+    <nav></nav>
+
+    <main class="pt-44 pb-20 px-6 max-w-6xl mx-auto relative z-10">
+        <!-- Header Section -->
+        <div class="iphone-glass p-8 mb-8 text-center" id="headerContext">
+            <div class="w-12 h-12 bg-sky-400 rounded-2xl flex items-center justify-center text-white text-xl mx-auto mb-4 shadow-lg shadow-sky-400/20 animate-pulse">
+                <i class="fa-solid fa-sparkles"></i>
+            </div>
+            <h2 class="text-3xl font-black tracking-tight mb-2">Curating for You...</h2>
+            <p class="text-slate-500 font-bold text-sm">Analyzing your past travel history</p>
+        </div>
+
+        <!-- Interactive Split Pane -->
+        <div class="flex flex-col lg:flex-row gap-8 items-stretch h-[calc(100vh-280px)] min-h-[550px]">
+            
+            <!-- Left Pane: Suggestions List & Filters -->
+            <div class="flex-1 flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
+                
+                <!-- Ask Ritu Custom Suggestions Prompt -->
+                <div class="iphone-glass p-6 flex flex-col gap-4 relative z-20" style="border: 1px solid var(--border);">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-500 text-sm">
+                            <i class="fa-solid fa-sparkles"></i>
+                        </div>
+                        <h3 class="text-sm font-black uppercase tracking-wider">Ask Ritu for Custom Recommendations</h3>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="rituPromptInput" placeholder="e.g. 'romantic sunset spots in Udaipur' or 'adventure sports in Manali'..." 
+                            class="flex-1 bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-sky-500 font-medium transition-all text-slate-800 dark:text-white"
+                            onkeydown="if(event.key === 'Enter') submitCustomPrompt()">
+                        <button onclick="submitCustomPrompt()" id="submitPromptBtn" 
+                            class="bg-sky-500 hover:bg-sky-600 text-[#0F172A] px-5 py-3 rounded-2xl font-black text-xs transition shadow-lg shadow-sky-500/15 flex items-center gap-2 shrink-0">
+                            Ask <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+                    <!-- Preset Pills -->
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <span class="text-[9px] font-black uppercase tracking-wider text-slate-500">Popular vibes:</span>
+                        <button onclick="setPromptAndSearch('Sunset views in Udaipur')" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-lg text-[9px] font-black transition-colors border border-transparent dark:border-white/5">🌅 Sunset Views</button>
+                        <button onclick="setPromptAndSearch('Spicy street food in Jaipur')" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-lg text-[9px] font-black transition-colors border border-transparent dark:border-white/5">🌶️ Street Food</button>
+                        <button onclick="setPromptAndSearch('Snow adventures in Manali')" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-lg text-[9px] font-black transition-colors border border-transparent dark:border-white/5">🧗 Snow Adventure</button>
+                        <button onclick="setPromptAndSearch('Quiet nature spots in Kerala')" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-lg text-[9px] font-black transition-colors border border-transparent dark:border-white/5">🍃 Quiet Nature</button>
+                    </div>
+                </div>
+                
+                <!-- Dynamic Filters & Live Search -->
+                <div class="iphone-glass p-4 flex flex-col md:flex-row gap-4 items-center justify-between relative z-20" style="border: 1px solid var(--border);">
+                    <div class="flex flex-wrap gap-1.5 items-center">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500 pl-1">Filter:</span>
+                        <button onclick="filterSuggestions('all')" id="filter-all" class="filter-btn active px-3.5 py-1.5 rounded-xl text-[11px] font-bold">All</button>
+                        <button onclick="filterSuggestions('gems')" id="filter-gems" class="filter-btn px-3.5 py-1.5 rounded-xl text-[11px] font-bold">Hidden Gems</button>
+                        <button onclick="filterSuggestions('food')" id="filter-food" class="filter-btn px-3.5 py-1.5 rounded-xl text-[11px] font-bold">Food Trails</button>
+                        <button onclick="filterSuggestions('nature')" id="filter-nature" class="filter-btn px-3.5 py-1.5 rounded-xl text-[11px] font-bold"><i class="fa-solid fa-leaf text-[9px] mr-1"></i>Nature</button>
+                        <button onclick="filterSuggestions('heritage')" id="filter-heritage" class="filter-btn px-3.5 py-1.5 rounded-xl text-[11px] font-bold"><i class="fa-solid fa-landmark text-[9px] mr-1"></i>Heritage</button>
+                        <button onclick="filterSuggestions('culinary')" id="filter-culinary" class="filter-btn px-3.5 py-1.5 rounded-xl text-[11px] font-bold"><i class="fa-solid fa-bowl-food text-[9px] mr-1"></i>Culinary</button>
+                        <button onclick="filterSuggestions('adventure')" id="filter-adventure" class="filter-btn px-3.5 py-1.5 rounded-xl text-[11px] font-bold"><i class="fa-solid fa-person-hiking text-[9px] mr-1"></i>Adventure</button>
+                        <button onclick="filterSuggestions('scenic')" id="filter-scenic" class="filter-btn px-3.5 py-1.5 rounded-xl text-[11px] font-bold"><i class="fa-solid fa-mountain-sun text-[9px] mr-1"></i>Scenic</button>
+                    </div>
+                    <div class="relative w-full md:w-48 shrink-0">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-magnifying-glass text-slate-400 text-[10px]"></i>
+                        </span>
+                        <input type="text" id="suggestionSearch" oninput="instantSearchSuggestions()" placeholder="Filter results..." 
+                            class="w-full bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-sky-500 font-semibold transition-colors text-slate-800 dark:text-white">
+                    </div>
+                </div>
+
+                <!-- Hidden Gems Section -->
+                <div id="gemsSection" class="space-y-4">
+                    <span class="category-label"><i class="fa-solid fa-map-pin"></i> Hidden Gems</span>
+                    <div id="hiddenGemsContainer" class="flex flex-col gap-4">
+                        <p class="text-slate-400 font-bold text-sm italic pl-2">Loading magical spots...</p>
+                    </div>
+                </div>
+
+                <!-- Food Trails Section -->
+                <div id="foodSection" class="space-y-4">
+                    <span class="category-label text-amber-500"><i class="fa-solid fa-utensils"></i> Food Recommendations</span>
+                    <div id="foodRecsContainer" class="flex flex-col gap-4">
+                        <p class="text-slate-400 font-bold text-sm italic pl-2">Loading tasty bites...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Pane: Interactive Map Panel -->
+            <div class="w-full lg:w-[450px] shrink-0 flex flex-col gap-4">
+                <!-- Weather Widget -->
+                <div id="suggestionsWeatherWidget" class="iphone-glass p-5 flex flex-col gap-3 relative overflow-hidden hidden" style="border: 1px solid var(--border);">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span id="weatherWidgetIcon" class="text-3xl">☀️</span>
+                            <div>
+                                <h4 id="weatherWidgetCity" class="font-black text-sm text-slate-800 dark:text-white">Udaipur Weather</h4>
+                                <p id="weatherWidgetLabel" class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Sunny</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <h3 id="weatherWidgetTemp" class="text-2xl font-black text-slate-800 dark:text-white leading-none">28°C</h3>
+                            <p class="text-[9px] text-sky-500 font-bold mt-1"><i class="fa-solid fa-cloud-sun"></i> Live Forecast</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/50 dark:border-white/5 text-[10px]">
+                        <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-bold">
+                            <i class="fa-solid fa-droplet text-sky-400 text-xs"></i>
+                            <span>Humidity: <strong id="weatherWidgetHumidity" class="text-slate-800 dark:text-white">65%</strong></span>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-bold">
+                            <i class="fa-solid fa-wind text-sky-400 text-xs"></i>
+                            <span>Wind: <strong id="weatherWidgetWind" class="text-slate-800 dark:text-white">12 km/h</strong></span>
+                        </div>
+                    </div>
+                    <!-- Advisory Banner -->
+                    <div id="weatherWidgetAdvisory" class="hidden text-[9px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2 rounded-xl flex items-center gap-2 mt-1">
+                        <i class="fa-solid fa-circle-exclamation text-xs shrink-0 animate-bounce"></i>
+                        <span id="weatherWidgetAdvisoryText"></span>
+                    </div>
+                </div>
+
+                <!-- Destination Info Panel (REST Countries & News API) -->
+                <div id="suggestionsDestinationInfoPanel" class="iphone-glass p-5 flex flex-col gap-3 relative overflow-hidden hidden" style="border: 1px solid var(--border);">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200/50 dark:border-white/5">
+                        <h4 class="font-black text-xs text-sky-500 uppercase tracking-wider flex items-center gap-1.5"><i class="fa-solid fa-earth-asia"></i> Destination Board</h4>
+                        <button onclick="toggleSuggestionsDestInfo()" class="text-slate-400 hover:text-sky-500 transition"><i class="fa-solid fa-chevron-up text-[9px]" id="sugDestInfoChevron"></i></button>
+                    </div>
+                    <div id="sugDestInfoExpandable" class="space-y-3.5">
+                        <!-- Country Quick Info Badges -->
+                        <div id="sugCountryBadgeGrid" class="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                            <!-- Populated dynamically -->
+                        </div>
+                        
+                        <!-- Travel News & Advisories Section -->
+                        <div class="pt-3 border-t border-slate-200/50 dark:border-white/5">
+                            <h5 class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1"><i class="fa-solid fa-newspaper text-emerald-500"></i> Local Travel News</h5>
+                            <div id="sugDestinationNewsList" class="space-y-2 max-h-36 overflow-y-auto custom-scroll pr-1">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="iphone-glass rounded-[32px] overflow-hidden flex-1 relative min-h-[350px] lg:min-h-0" style="border: 1px solid var(--border);">
+                    <div id="suggestionsMap" class="w-full h-full absolute inset-0 z-10"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        let map;
+        let activeTileLayer = null;
+        const markersGroup = L.layerGroup();
+        let suggestionsData = { hidden_gems: [], food_recommendations: [] };
+
+        const CITY_COORDS = {
+            "Goa": { lat: 15.2993, lon: 74.1240 },
+            "Udaipur": { lat: 24.5854, lon: 73.7125 },
+            "Kerala": { lat: 10.8505, lon: 76.2711 },
+            "Munnar": { lat: 10.0889, lon: 77.0595 },
+            "Alleppey": { lat: 9.4981, lon: 76.3388 },
+            "Jaipur": { lat: 26.9124, lon: 75.7873 },
+            "Delhi": { lat: 28.7041, lon: 77.1025 },
+            "Manali": { lat: 32.2336, lon: 77.2047 },
+            "Agra": { lat: 27.1767, lon: 78.0081 },
+            "Varanasi": { lat: 25.3176, lon: 82.9739 },
+            "Mumbai": { lat: 19.0760, lon: 72.8777 },
+            "Leh": { lat: 34.1526, lon: 77.5771 },
+            "Darjeeling": { lat: 27.0410, lon: 88.2627 },
+            "Sikkim": { lat: 27.3389, lon: 88.6117 }
+        };
+
+        // Coordinates lookup cache for common gems/foods
+        const SUGGESTION_COORDS = {
+            // Andaman
+            "radhanagar beach": { lat: 11.9839, lon: 92.9575, city: "Andaman" },
+            "elephant beach": { lat: 12.0011, lon: 92.9554, city: "Andaman" },
+            "cellular jail": { lat: 11.6738, lon: 92.7478, city: "Andaman" },
+            "ross island": { lat: 11.6775, lon: 92.7661, city: "Andaman" },
+            "chidiya tapu": { lat: 11.5032, lon: 92.7054, city: "Andaman" },
+            "laxmanpur beach": { lat: 11.8344, lon: 93.0232, city: "Andaman" },
+            "bharatpur beach": { lat: 11.8441, lon: 93.0485, city: "Andaman" },
+            "baratang island": { lat: 12.1167, lon: 92.7833, city: "Andaman" },
+            "mayabunder": { lat: 12.9234, lon: 92.8978, city: "Andaman" },
+            "rangat": { lat: 12.5022, lon: 92.9056, city: "Andaman" },
+            "diglipur": { lat: 13.2667, lon: 92.9667, city: "Andaman" },
+            "coconut prawn curry": { lat: 11.9761, lon: 92.9876, city: "Andaman" },
+            "andaman lobster delight": { lat: 11.6234, lon: 92.7265, city: "Andaman" },
+
+            // Jaisalmer
+            "jaisalmer fort": { lat: 26.9128, lon: 70.9126, city: "Jaisalmer" },
+            "sam sand dunes": { lat: 26.8920, lon: 70.5100, city: "Jaisalmer" },
+            "gadisar lake": { lat: 26.9095, lon: 70.9234, city: "Jaisalmer" },
+            "patwon ki haveli": { lat: 26.9154, lon: 70.9124, city: "Jaisalmer" },
+            "kuldhara ghost village": { lat: 26.8712, lon: 70.7856, city: "Jaisalmer" },
+
+            // Meghalaya
+            "living root bridge": { lat: 25.2494, lon: 91.6661, city: "Meghalaya" },
+            "double decker living root bridge": { lat: 25.2494, lon: 91.6661, city: "Meghalaya" },
+            "dawki river": { lat: 25.1983, lon: 92.0194, city: "Meghalaya" },
+            "nohkalikai falls": { lat: 25.2755, lon: 91.6853, city: "Meghalaya" },
+            "mawlynnong": { lat: 25.2017, lon: 91.9036, city: "Meghalaya" },
+            "mawsynram": { lat: 25.2975, lon: 91.5826, city: "Meghalaya" },
+            "jadoh": { lat: 25.5788, lon: 91.8831, city: "Meghalaya" },
+            "dohneiiong": { lat: 25.5788, lon: 91.8831, city: "Meghalaya" },
+            "pukhlein": { lat: 25.2702, lon: 91.7323, city: "Meghalaya" },
+
+            // Leh / Ladakh
+            "khardung la pass": { lat: 34.2787, lon: 77.6047, city: "Leh" },
+            "pangong tso lake": { lat: 33.7595, lon: 78.6674, city: "Leh" },
+            "nubra valley": { lat: 34.5822, lon: 77.5673, city: "Leh" },
+            "magnetic hill": { lat: 34.2176, lon: 77.4172, city: "Leh" },
+            "diskit monastery": { lat: 34.5428, lon: 77.5617, city: "Leh" },
+            "leh palace": { lat: 34.1661, lon: 77.5867, city: "Leh" },
+            "shey palace": { lat: 34.0718, lon: 77.6332, city: "Leh" },
+            "thiksey monastery": { lat: 34.0560, lon: 77.6668, city: "Leh" },
+            "sangam": { lat: 34.1656, lon: 77.4172, city: "Leh" },
+            "thukpa": { lat: 34.1661, lon: 77.5867, city: "Leh" },
+            "skyu": { lat: 34.1661, lon: 77.5867, city: "Leh" },
+
+            // Darjeeling / Sikkim
+            "kanchenjunga": { lat: 27.7025, lon: 88.1475, city: "Darjeeling" },
+            "tiger hill": { lat: 26.9958, lon: 88.2494, city: "Darjeeling" },
+            "darjeeling": { lat: 27.0410, lon: 88.2627, city: "Darjeeling" },
+            "ghoom monastery": { lat: 27.0258, lon: 88.2492, city: "Darjeeling" },
+            "batasia loop": { lat: 27.0227, lon: 88.2474, city: "Darjeeling" },
+            "rumtek monastery": { lat: 27.2798, lon: 88.6017, city: "Sikkim" },
+            "tsomgo lake": { lat: 27.3739, lon: 88.7617, city: "Sikkim" },
+            "gangtok": { lat: 27.3389, lon: 88.6117, city: "Sikkim" },
+            "nathula pass": { lat: 27.3865, lon: 88.8309, city: "Sikkim" },
+            "momos": { lat: 27.0410, lon: 88.2627, city: "Darjeeling" },
+            "chhurpi": { lat: 27.3389, lon: 88.6117, city: "Sikkim" },
+
+            // Existing / Others
+            "bahubali hills": { lat: 24.5614, lon: 73.7275, city: "Udaipur" },
+            "kolukkumalai": { lat: 10.0889, lon: 77.0595, city: "Munnar" },
+            "dal baati churma": { lat: 26.8754, lon: 75.7723, city: "Jaipur" },
+            "pyaaz kachori": { lat: 26.9124, lon: 75.7873, city: "Jaipur" },
+            "kerala karimeen": { lat: 9.4981, lon: 76.3388, city: "Alleppey" },
+            "karimeen pollichathu": { lat: 9.4981, lon: 76.3388, city: "Alleppey" },
+            "sadya": { lat: 10.8505, lon: 76.2711, city: "Alleppey" },
+            "cola beach lagoon": { lat: 15.0100, lon: 74.0232, city: "Goa" },
+            "tambdi surla temple": { lat: 15.4925, lon: 73.7738, city: "Goa" },
+            "goan fish curry rice": { lat: 15.2993, lon: 74.1240, city: "Goa" },
+            "bebinca": { lat: 15.5009, lon: 73.9116, city: "Goa" },
+            "siddu": { lat: 32.2516, lon: 77.1677, city: "Manali" },
+            "pan-fried trout": { lat: 32.2516, lon: 77.1677, city: "Manali" },
+            "tamatar chaat": { lat: 25.2836, lon: 83.0099, city: "Varanasi" },
+            "blue lassi": { lat: 25.2676, lon: 82.9459, city: "Varanasi" },
+            "vada pav": { lat: 19.0760, lon: 72.8777, city: "Mumbai" },
+            "pav bhaji": { lat: 19.0660, lon: 72.8617, city: "Mumbai" },
+            "mughlai mutton korma": { lat: 28.6139, lon: 77.2090, city: "Delhi" },
+            "aloo parantha": { lat: 28.7041, lon: 77.1025, city: "Delhi" }
+        };
+
+        const LOCAL_SUGGESTION_IMAGES = {
+            "radhanagar beach": "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?w=300&auto=format&fit=crop&q=60",
+            "elephant beach": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=300&auto=format&fit=crop&q=60",
+            "cellular jail": "https://images.unsplash.com/photo-1588668214407-6eb952709b90?w=300&auto=format&fit=crop&q=60",
+            "ross island": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=60",
+            "jaisalmer fort": "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300&auto=format&fit=crop&q=60",
+            "sam sand dunes": "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=300&auto=format&fit=crop&q=60",
+            "gadisar lake": "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300&auto=format&fit=crop&q=60",
+            "patwon ki haveli": "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300&auto=format&fit=crop&q=60",
+            "kuldhara ghost village": "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=300&auto=format&fit=crop&q=60",
+            "living root bridge": "https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=300&auto=format&fit=crop&q=60",
+            "double decker living root bridge": "https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=300&auto=format&fit=crop&q=60",
+            "dawki river": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=300&auto=format&fit=crop&q=60",
+            "nohkalikai falls": "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=300&auto=format&fit=crop&q=60",
+            "dal baati churma": "https://images.unsplash.com/photo-1613292443284-8d10ef9383fe?w=300&auto=format&fit=crop&q=60",
+            "goan fish curry rice": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&auto=format&fit=crop&q=60",
+            "bebinca": "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=300&auto=format&fit=crop&q=60",
+            "kerala karimeen": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=300&auto=format&fit=crop&q=60",
+            "siddu": "https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=300&auto=format&fit=crop&q=60",
+            "vada pav": "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=300&auto=format&fit=crop&q=60",
+            "pav bhaji": "https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=300&auto=format&fit=crop&q=60",
+            "kanchenjunga": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=300&auto=format&fit=crop&q=60",
+            "tiger hill": "https://images.unsplash.com/photo-1584824486509-112e4181ff6b?w=300&auto=format&fit=crop&q=60",
+            "darjeeling": "https://images.unsplash.com/photo-1584824486509-112e4181ff6b?w=300&auto=format&fit=crop&q=60",
+            "ghoom monastery": "https://images.unsplash.com/photo-1548013146-72479768bada?w=300&auto=format&fit=crop&q=60",
+            "batasia loop": "https://images.unsplash.com/photo-1548013146-72479768bada?w=300&auto=format&fit=crop&q=60",
+            "khardung la pass": "https://images.unsplash.com/photo-1598091383021-15ddea10925d?w=300&auto=format&fit=crop&q=60",
+            "pangong tso lake": "https://images.unsplash.com/photo-1598091383021-15ddea10925d?w=300&auto=format&fit=crop&q=60",
+            "nubra valley": "https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300&auto=format&fit=crop&q=60",
+            "diskit monastery": "https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300&auto=format&fit=crop&q=60",
+            "leh palace": "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=300&auto=format&fit=crop&q=60",
+            "shey palace": "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=300&auto=format&fit=crop&q=60",
+            "thiksey monastery": "https://images.unsplash.com/photo-1548013146-72479768bada?w=300&auto=format&fit=crop&q=60"
+        };
+
+        // Determine destination city based on keywords
+        function getParentCity(placeName) {
+            const norm = placeName.toLowerCase();
+            if (norm.includes("cola") || norm.includes("surla") || norm.includes("goan") || norm.includes("bebinca") || norm.includes("baga") || norm.includes("britto") || norm.includes("chapora") || norm.includes("bom jesus")) return "Goa";
+            if (norm.includes("bahubali") || norm.includes("pichola") || norm.includes("ambrai") || norm.includes("sajjangarh") || norm.includes("bagore") || norm.includes("shilpgram") || norm.includes("udaipur")) return "Udaipur";
+            if (norm.includes("kolukkumalai") || norm.includes("munnar") || norm.includes("karimeen") || norm.includes("alleppey") || norm.includes("sadya") || norm.includes("thekkady") || norm.includes("varkala") || norm.includes("kerala")) return "Kerala";
+            if (norm.includes("chokhi") || norm.includes("amer") || norm.includes("hawa") || norm.includes("jantar") || norm.includes("patrika") || norm.includes("galta") || norm.includes("jaipur")) return "Jaipur";
+            if (norm.includes("qutub") || norm.includes("karim") || norm.includes("india gate") || norm.includes("humayun") || norm.includes("lotus") || norm.includes("delhi")) return "Delhi";
+            if (norm.includes("hadimba") || norm.includes("rohtang") || norm.includes("jogini") || norm.includes("manali")) return "Manali";
+            if (norm.includes("taj") || norm.includes("fort agra") || norm.includes("agra")) return "Agra";
+            if (norm.includes("ganga") || norm.includes("aarti") || norm.includes("kashi") || norm.includes("varanasi")) return "Varanasi";
+            if (norm.includes("gateway") || norm.includes("marine drive") || norm.includes("leopold") || norm.includes("elephanta") || norm.includes("mumbai")) return "Mumbai";
+            if (norm.includes("cellular") || norm.includes("radhanagar") || norm.includes("elephant beach") || norm.includes("havelock") || norm.includes("neil") || norm.includes("blair") || norm.includes("ross island") || norm.includes("andaman")) return "Andaman";
+            if (norm.includes("dunes") || norm.includes("sand dunes") || norm.includes("gadisar") || norm.includes("patwon") || norm.includes("kuldhara") || norm.includes("jaisalmer")) return "Jaisalmer";
+            if (norm.includes("living root") || norm.includes("root bridge") || norm.includes("dawki") || norm.includes("nohkalikai") || norm.includes("shillong") || norm.includes("cherrapunji") || norm.includes("sohra") || norm.includes("meghalaya")) return "Meghalaya";
+            if (norm.includes("khardung") || norm.includes("pangong") || norm.includes("nubra") || norm.includes("magnetic") || norm.includes("diskit") || norm.includes("leh") || norm.includes("thiksey") || norm.includes("shey") || norm.includes("thukpa") || norm.includes("skyu")) return "Leh";
+            if (norm.includes("kanchenjunga") || norm.includes("tiger hill") || norm.includes("darjeeling") || norm.includes("ghoom") || norm.includes("batasia") || norm.includes("rumtek") || norm.includes("tsomgo") || norm.includes("gangtok") || norm.includes("nathula") || norm.includes("momos") || norm.includes("chhurpi")) return "Darjeeling";
+            return "";
+        }
+
+        // Initialize Map
+        function initMap() {
+            if (map) return;
+            map = L.map('suggestionsMap', { zoomControl: false }).setView([20.5937, 78.9629], 5);
+            updateMapTileLayer(document.documentElement.getAttribute('data-theme') || 'dark');
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            markersGroup.addTo(map);
+        }
+
+        function updateMapTileLayer(theme) {
+            if (!map) return;
+            if (activeTileLayer) {
+                map.removeLayer(activeTileLayer);
+            }
+            const tileUrl = theme === 'dark' 
+                ? 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+                
+            activeTileLayer = L.tileLayer(tileUrl, {
+                attribution: '&copy; OpenStreetMap contributors, &copy; CARTO'
+            }).addTo(map);
+        }
+
+        window.addEventListener('themechanged', (e) => {
+            updateMapTileLayer(e.detail.theme);
+        });
+
+        async function lazyLoadSuggestionImages() {
+            const images = document.querySelectorAll('.suggestion-img');
+            images.forEach(async (img) => {
+                const query = img.getAttribute('data-query');
+                const normQuery = query.split(' ')[0].toLowerCase().trim();
+                
+                // Try local cache map first
+                let matchedUrl = null;
+                for (const key of Object.keys(LOCAL_SUGGESTION_IMAGES)) {
+                    if (normQuery.includes(key) || key.includes(normQuery)) {
+                        matchedUrl = LOCAL_SUGGESTION_IMAGES[key];
+                        break;
+                    }
+                }
+                
+                if (matchedUrl) {
+                    img.src = matchedUrl;
+                    return;
+                }
+                
+                // Fallback to backend proxy
+                try {
+                    const res = await fetch(`/api/trips/image/unsplash?query=${encodeURIComponent(query)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && data.url) {
+                            img.src = data.url;
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Failed to fetch unsplash image for suggestion:", query, e);
+                }
+            });
+        }
+
+        async function getWikiArticleUrl(placeName) {
+            const directMap = {
+                "taj mahal": "Taj_Mahal",
+                "amer fort": "Amer_Fort",
+                "hawa mahal": "Hawa_Mahal",
+                "lake pichola": "Lake_Pichola",
+                "cellular jail": "Cellular_Jail",
+                "radhanagar beach": "Radhanagar_Beach",
+                "jaisalmer fort": "Jaisalmer_Fort",
+                "living root bridge": "Living_root_bridge",
+                "double decker living root bridge": "Living_root_bridge",
+                "dawki": "Umngot_River",
+                "dawki river": "Umngot_River",
+                "nohkalikai falls": "Nohkalikai_Falls",
+                "shillong": "Shillong",
+                "cherrapunji": "Cherrapunji",
+                "sam sand dunes": "Sam_Sand_Dunes",
+                "gadisar lake": "Gadisar_Lake",
+                "munnar": "Munnar",
+                "alleppey": "Alappuzha",
+                "backwaters": "Kerala_backwaters",
+                "varkala cliff": "Varkala_Beach",
+                "varkala beach": "Varkala_Beach",
+                "chokhi dhani": "Chokhi_Dhani",
+                "basilica of bom jesus": "Basilica_of_Bom_Jesus",
+                "chapora fort": "Chapora_Fort",
+                "aguada fort": "Fort_Aguada",
+                "dudhsagar falls": "Dudhsagar_Falls"
+            };
+            const norm = placeName.toLowerCase().trim();
+            if (directMap[norm]) {
+                return `https://en.wikipedia.org/wiki/${directMap[norm]}`;
+            }
+            try {
+                const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(placeName)}&format=json&origin=*`);
+                if (searchRes.ok) {
+                    const data = await searchRes.json();
+                    if (data.query && data.query.search && data.query.search.length > 0) {
+                        return `https://en.wikipedia.org/wiki/${encodeURIComponent(data.query.search[0].title.replace(/\s+/g, '_'))}`;
+                    }
+                }
+            } catch (_) {}
+            return `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(placeName)}`;
+        }
+
+        async function openWikipediaPage(placeName, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const url = await getWikiArticleUrl(placeName);
+            window.open(url, '_blank');
+        }
+
+        // Plot all suggestions as pins on map
+        async function plotAllSuggestionsOnMap(data) {
+            if (!map) return;
+            markersGroup.clearLayers();
+            const allCoords = [];
+            
+            const gems = data.hidden_gems || [];
+            const foods = data.food_recommendations || [];
+            const items = [
+                ...gems.map(g => ({ ...g, type: 'gem' })),
+                ...foods.map(f => ({ ...f, type: 'food' }))
+            ];
+            
+            for (const item of items) {
+                const normName = item.title.toLowerCase().trim();
+                let coords = null;
+                const cityName = getParentCity(item.title);
+                
+                if (SUGGESTION_COORDS[normName]) {
+                    coords = SUGGESTION_COORDS[normName];
+                } else {
+                    for (const key of Object.keys(SUGGESTION_COORDS)) {
+                        if (normName.includes(key) || key.includes(normName)) {
+                            coords = SUGGESTION_COORDS[key];
+                            break;
+                        }
+                    }
+                }
+                
+                if (!coords) {
+                    try {
+                        const query = cityName ? `${item.title}, ${cityName}` : item.title;
+                        const res = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+                        const geoData = await res.json();
+                        if (geoData && geoData.length > 0) {
+                            const lat = parseFloat(geoData[0].lat);
+                            const lon = parseFloat(geoData[0].lon);
+                            const isDefault = (Math.abs(lat - 28.6139) < 0.0001 && Math.abs(lon - 77.2090) < 0.0001) ||
+                                              (geoData[0].display_name && geoData[0].display_name.includes('(Default Location)'));
+                            
+                            const destLower = (cityName || '').toLowerCase();
+                            const placeLower = (item.title || '').toLowerCase();
+                            
+                            if (isDefault && !destLower.includes('delhi') && !placeLower.includes('delhi')) {
+                                console.warn(`[Suggestions Geocode Bypass] Filtered Delhi fallback for "${item.title}"`);
+                            } else {
+                                coords = { lat, lon };
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Geocoding failed for:", item.title, e);
+                    }
+                }
+                
+                if (!coords) {
+                    // Fallback to offset coordinates from parent city
+                    const baseCity = cityName || "Delhi";
+                    const base = CITY_COORDS[baseCity] || CITY_COORDS["Delhi"];
+                    const offset = (Math.random() - 0.5) * 0.08;
+                    coords = { lat: base.lat + offset, lon: base.lon + offset };
+                }
+                
+                if (coords && !isNaN(coords.lat) && !isNaN(coords.lon)) {
+                    const lat = parseFloat(coords.lat);
+                    const lon = parseFloat(coords.lon);
+                    allCoords.push([lat, lon]);
+                    
+                    const markerColor = item.type === 'gem' ? '#38BDF8' : '#F59E0B';
+                    const markerPulseClass = item.type === 'gem' ? 'bg-sky-500/30' : 'bg-amber-500/30';
+                    const markerIconClass = item.type === 'gem' ? 'fa-star' : 'fa-utensils';
+                    
+                    const markerIcon = L.divIcon({
+                        html: `
+                            <div class="relative w-10 h-10 flex items-center justify-center">
+                                <div class="absolute inset-0 rounded-full animate-ping opacity-60 ${markerPulseClass}"></div>
+                                <div class="w-8 h-8 rounded-full border-2 border-white dark:border-slate-800 shadow-lg flex items-center justify-center text-white text-xs transition-all duration-300" style="background-color: ${markerColor};">
+                                    <i class="fa-solid ${item.icon || markerIconClass}"></i>
+                                </div>
+                            </div>`,
+                        className: 'bg-transparent',
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
+                    });
+                    
+                    const marker = L.marker([lat, lon], { icon: markerIcon }).addTo(markersGroup);
+                    
+                    // Attach metadata tags for dynamic filtering
+                    marker.title = item.title;
+                    marker.description = item.description || '';
+                    marker.tags = [item.type, ...getNormalizedTagsList(item)];
+                    
+                    // Highlight card and sync details panel on marker click
+                    marker.on('click', () => {
+                        const slug = item.title.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+                        const card = document.getElementById(`card-${slug}`);
+                        if (card) {
+                            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        syncDetailsPanel(item.title, item.description || '');
+                    });
+                    
+                    marker.bindPopup(`
+                        <div class="p-3 text-slate-800 dark:text-white font-medium" style="min-width:200px; font-family:'Plus Jakarta Sans', sans-serif;">
+                            <span class="inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-sky-500 mb-1">
+                                ${item.type === 'gem' ? 'Hidden Gem' : 'Food Trail'}
+                            </span>
+                            <h4 class="font-black text-sm mb-1">${item.title}</h4>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mb-3">${item.description}</p>
+                            <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <a href="/create-trip.html?dest=${encodeURIComponent(cityName)}" class="bg-sky-500 text-slate-950 font-black text-[9px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg hover:bg-sky-400 transition-colors">Plan Trip</a>
+                                <a href="#" onclick="openWikipediaPage('${item.title.replace(/'/g, "\\'")}', event); return false;" class="text-sky-500 hover:text-sky-400 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">Explore Wiki <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                            </div>
+                        </div>
+                    `);
+                }
+            }
+            
+            if (allCoords.length > 0) {
+                try {
+                    map.fitBounds(allCoords, { padding: [50, 50], maxZoom: 13, animate: true, duration: 1.5 });
+                } catch (e) {
+                    console.warn("fitBounds failed:", e);
+                }
+            }
+        }
+
+        // Synchronize Top details panel, Wikipedia link, weather banner, and card highlights
+        async function syncDetailsPanel(placeName, description) {
+            const cityName = getParentCity(placeName);
+            if (cityName) {
+                updateWeatherForCity(cityName);
+            }
+
+            // Sync with Top Destination Banner Panel
+            const slug = placeName.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+            const cardEl = document.getElementById(`card-${slug}`);
+            
+            // Highlight the card
+            document.querySelectorAll('.iphone-card').forEach(c => {
+                c.classList.remove('ring-2', 'ring-sky-500', 'scale-[1.02]', 'shadow-2xl');
+            });
+            if (cardEl) {
+                cardEl.classList.add('ring-2', 'ring-sky-500', 'scale-[1.02]', 'shadow-2xl');
+                const imgEl = cardEl.querySelector('.suggestion-img');
+                if (imgEl && imgEl.src) {
+                    const fallbackImg = document.getElementById('suggestionsDestFallbackImage');
+                    if (fallbackImg) {
+                        fallbackImg.style.backgroundImage = `url('${imgEl.src}')`;
+                    }
+                }
+            }
+            const bannerTitle = document.getElementById('suggestionsDestTitle');
+            if (bannerTitle) bannerTitle.innerText = placeName;
+            const bannerDesc = document.getElementById('suggestionsDestDesc');
+            if (bannerDesc) bannerDesc.innerText = description;
+
+            // Wikipedia Link Sync
+            const wikiBtn = document.getElementById('suggestionsDestWikiBtn');
+            if (wikiBtn) {
+                const wikiUrl = await getWikiArticleUrl(placeName);
+                wikiBtn.href = wikiUrl;
+                wikiBtn.classList.remove('hidden');
+                wikiBtn.classList.add('inline-flex');
+            }
+        }
+
+        // Locate suggestion on map and trigger popup
+        async function locatePlace(placeName, description, icon) {
+            if (!map) return;
+            
+            await syncDetailsPanel(placeName, description);
+
+            const slug = placeName.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+            const cardEl = document.getElementById(`card-${slug}`);
+            if (cardEl) {
+                cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            let markerFound = false;
+            markersGroup.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    const popup = layer.getPopup();
+                    const title = layer.title ? layer.title.toLowerCase() : '';
+                    const isMatch = title === placeName.toLowerCase() || 
+                                    (popup && popup.getContent().toLowerCase().includes(placeName.toLowerCase()));
+                    if (isMatch) {
+                        if (!map.hasLayer(layer)) {
+                            layer.addTo(map);
+                        }
+                        map.flyTo(layer.getLatLng(), 14, { duration: 1.2 });
+                        setTimeout(() => {
+                            layer.openPopup();
+                        }, 600);
+                        markerFound = true;
+                    }
+                }
+            });
+            
+            if (!markerFound) {
+                let coords = null;
+                const normName = placeName.toLowerCase().trim();
+                
+                if (SUGGESTION_COORDS[normName]) {
+                    coords = SUGGESTION_COORDS[normName];
+                }
+                
+                if (!coords) {
+                    try {
+                        const res = await fetch(`/api/geocode?q=${encodeURIComponent(placeName + ", " + cityName)}`);
+                        const data = await res.json();
+                        if (data && data.length > 0) {
+                            const lat = parseFloat(data[0].lat);
+                            const lon = parseFloat(data[0].lon);
+                            const isDefault = (Math.abs(lat - 28.6139) < 0.0001 && Math.abs(lon - 77.2090) < 0.0001) ||
+                                              (data[0].display_name && data[0].display_name.includes('(Default Location)'));
+                            
+                            const destLower = (cityName || '').toLowerCase();
+                            const placeLower = (placeName || '').toLowerCase();
+                            
+                            if (isDefault && !destLower.includes('delhi') && !placeLower.includes('delhi')) {
+                                console.warn(`[Suggestions Geocode Bypass] Filtered Delhi fallback for "${placeName}"`);
+                            } else {
+                                coords = { lat, lon };
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(e);
+                    }
+                }
+                
+                if (!coords) {
+                    // Fallback to offset coordinates from parent city
+                    const baseCity = cityName || "Delhi";
+                    const base = CITY_COORDS[baseCity] || CITY_COORDS["Delhi"];
+                    const offset = (Math.random() - 0.5) * 0.08;
+                    coords = { lat: base.lat + offset, lon: base.lon + offset };
+                }
+                
+                if (coords) {
+                    const lat = parseFloat(coords.lat);
+                    const lon = parseFloat(coords.lon);
+                    map.flyTo([lat, lon], 14, { duration: 1.2 });
+                    
+                    const markerIcon = L.divIcon({
+                        html: `<div class="w-10 h-10 bg-sky-500 rounded-full border-4 border-white shadow-2xl flex items-center justify-center text-white text-lg animate-bounce"><i class="fa-solid ${icon || 'fa-location-dot'}"></i></div>`,
+                        className: 'bg-transparent',
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 40]
+                    });
+                    
+                    const marker = L.marker([lat, lon], { icon: markerIcon }).addTo(markersGroup);
+                    marker.title = placeName;
+                    marker.description = description || '';
+                    marker.tags = [icon === 'fa-bowl-rice' || icon === 'fa-utensils' ? 'food' : 'gems'];
+                    
+                    marker.on('click', () => {
+                        const slug = placeName.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+                        const card = document.getElementById(`card-${slug}`);
+                        if (card) {
+                            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        syncDetailsPanel(placeName, description || '');
+                    });
+                    
+                    marker.bindPopup(`
+                        <div class="p-2 text-slate-800 dark:text-white font-medium" style="min-width:180px; font-family:'Plus Jakarta Sans', sans-serif;">
+                            <h4 class="font-black text-sm mb-1">${placeName}</h4>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mb-2">${description}</p>
+                            <div class="flex justify-between items-center gap-3 mt-2">
+                                <a href="/create-trip.html?dest=${encodeURIComponent(cityName)}" class="inline-block bg-sky-500 text-slate-950 font-black text-[9px] uppercase tracking-wider px-3 py-1.5 rounded-lg hover:bg-sky-400 transition-colors">Draft a Trip</a>
+                                <a href="#" onclick="openWikipediaPage('${placeName.replace(/'/g, "\\'")}', event); return false;" class="text-sky-500 hover:text-sky-400 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">Explore Wiki <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                            </div>
+                        </div>
+                    `).openPopup();
+                }
+            }
+        }
+
+        function getNormalizedTagsList(item) {
+            const desc = (item.description || "").toLowerCase();
+            const title = (item.title || "").toLowerCase();
+            const tags = [];
+            
+            if (desc.includes("sunset") || desc.includes("view") || desc.includes("peak") || desc.includes("hill")) tags.push("scenic");
+            if (desc.includes("temple") || desc.includes("historical") || desc.includes("heritage") || desc.includes("century") || desc.includes("palace") || desc.includes("fort") || title.includes("temple") || title.includes("fort")) tags.push("heritage");
+            if (desc.includes("food") || desc.includes("curry") || desc.includes("spicy") || desc.includes("dish") || desc.includes("dessert") || desc.includes("sweet") || desc.includes("eatery") || desc.includes("traditional") || desc.includes("fish")) tags.push("culinary");
+            if (desc.includes("beach") || desc.includes("water") || desc.includes("lagoon") || desc.includes("river") || desc.includes("lake") || desc.includes("sea")) tags.push("waterfront");
+            if (desc.includes("organic") || desc.includes("estate") || desc.includes("nature") || desc.includes("jungle") || desc.includes("forest") || desc.includes("wildlife")) tags.push("nature");
+            if (desc.includes("adventure") || desc.includes("trek") || desc.includes("sport") || desc.includes("climb") || desc.includes("snow") || desc.includes("rafting")) tags.push("adventure");
+            
+            return tags;
+        }
+
+        let activeFilterType = 'all';
+
+        function syncMapMarkersWithFilter(type, query = '') {
+            markersGroup.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    const popup = layer.getPopup();
+                    const popupContent = popup ? popup.getContent().toLowerCase() : '';
+                    const title = layer.title ? layer.title.toLowerCase() : '';
+                    const description = layer.description ? layer.description.toLowerCase() : '';
+                    
+                    const matchesSearch = !query || popupContent.includes(query) || title.includes(query) || description.includes(query);
+                    let matchesCategory = false;
+                    
+                    if (type === 'all') {
+                        matchesCategory = true;
+                    } else if (type === 'gems' && layer.tags && layer.tags.includes('gem')) {
+                        matchesCategory = true;
+                    } else if (type === 'food' && layer.tags && layer.tags.includes('food')) {
+                        matchesCategory = true;
+                    } else if (layer.tags && layer.tags.includes(type)) {
+                        matchesCategory = true;
+                    }
+                    
+                    if (matchesCategory && matchesSearch) {
+                        if (!map.hasLayer(layer)) layer.addTo(map);
+                    } else {
+                        map.removeLayer(layer);
+                    }
+                }
+            });
+        }
+
+        // Toggle category filters dynamically on map and lists
+        function filterSuggestions(type) {
+            activeFilterType = type;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`filter-${type}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            applyFilters();
+        }
+
+        let originalSplitPaneHTML = '';
+
+        function showLoginGuard() {
+            document.getElementById('headerContext').innerHTML = `
+                <div class="w-12 h-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-500 text-xl mx-auto mb-4 shadow-lg shadow-sky-500/10">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h2 class="text-2xl font-black tracking-tight mb-1">Personalized Suggestions Locked</h2>
+                <p class="text-slate-500 font-semibold text-sm">Please log in to analyze your travel history and get custom recommendations.</p>
+            `;
+            
+            const listPane = document.querySelector('main > div.flex');
+            listPane.innerHTML = `
+                <div class="flex-1 flex flex-col justify-center items-center py-20 iphone-glass p-8 rounded-[48px] text-center max-w-2xl mx-auto">
+                    <div class="w-16 h-16 bg-sky-500/10 rounded-full flex items-center justify-center mb-6 mx-auto">
+                        <i class="fa-solid fa-lock text-2xl text-sky-500"></i>
+                    </div>
+                    <h3 class="text-2xl font-black mb-2">Login Required</h3>
+                    <p class="opacity-50 text-sm font-bold mb-6 max-w-xs mx-auto">Sign in to unlock recommendations tailored to your past travel history.</p>
+                    <div class="flex flex-wrap gap-4 justify-center">
+                        <button onclick="toggleLoginModal()" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-2xl font-black text-sm transition shadow-lg shadow-sky-500/20">
+                            <i class="fa-solid fa-user text-xs"></i> Log In / Register
+                        </button>
+                        <button onclick="loadDefaultSuggestions()" class="inline-flex items-center gap-2 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-white px-6 py-3 rounded-2xl font-black text-sm transition border border-slate-300 dark:border-white/10 hover:bg-slate-300 dark:hover:bg-slate-700">
+                            View General Suggestions
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function restoreSplitViewLayout() {
+            if (!originalSplitPaneHTML) return;
+            const container = document.querySelector('main > div.flex');
+            if (container) {
+                container.innerHTML = originalSplitPaneHTML;
+            }
+        }
+
+        function renderSkeletons() {
+            const skeletonCard = `
+                <div class="iphone-card p-5 flex gap-4 items-start shimmer-bg" style="border: 1px solid var(--border); min-height: 120px;">
+                    <div class="shrink-0 w-12 h-12 rounded-2xl bg-slate-200/40 dark:bg-slate-800/40 flex items-center justify-center"></div>
+                    <div class="flex-1 space-y-2">
+                        <div class="h-4 bg-slate-200/40 dark:bg-slate-800/40 rounded w-1/3"></div>
+                        <div class="h-3 bg-slate-200/40 dark:bg-slate-800/40 rounded w-5/6"></div>
+                        <div class="h-3 bg-slate-200/40 dark:bg-slate-800/40 rounded w-2/3"></div>
+                    </div>
+                </div>
+            `;
+            const list = [skeletonCard, skeletonCard].join('');
+            document.getElementById('hiddenGemsContainer').innerHTML = list;
+            document.getElementById('foodRecsContainer').innerHTML = list;
+        }
+
+        function getTagChips(item) {
+            const desc = (item.description || "").toLowerCase();
+            const title = (item.title || "").toLowerCase();
+            const tags = [];
+            
+            if (desc.includes("sunset") || desc.includes("view") || desc.includes("peak") || desc.includes("hill")) tags.push("#ScenicViews");
+            if (desc.includes("temple") || desc.includes("historical") || desc.includes("heritage") || desc.includes("century") || desc.includes("palace") || desc.includes("fort") || title.includes("temple") || title.includes("fort")) tags.push("#Heritage");
+            if (desc.includes("food") || desc.includes("curry") || desc.includes("spicy") || desc.includes("dish") || desc.includes("dessert") || desc.includes("sweet") || desc.includes("eatery") || desc.includes("traditional") || desc.includes("fish")) tags.push("#Culinary");
+            if (desc.includes("beach") || desc.includes("water") || desc.includes("lagoon") || desc.includes("river") || desc.includes("lake") || desc.includes("sea")) tags.push("#WaterFront");
+            if (desc.includes("organic") || desc.includes("estate") || desc.includes("nature") || desc.includes("jungle") || desc.includes("forest") || desc.includes("wildlife")) tags.push("#Nature");
+            if (desc.includes("adventure") || desc.includes("trek") || desc.includes("sport") || desc.includes("climb") || desc.includes("snow") || desc.includes("rafting")) tags.push("#Adventure");
+            
+            if (tags.length === 0) {
+                tags.push("#MustVisit");
+                tags.push("#ExploreIndia");
+            }
+            
+            return tags.map(t => `<span class="bg-sky-500/10 text-sky-500 text-[9px] font-black uppercase px-2 py-0.5 rounded-md border border-sky-500/10">${t}</span>`).join(' ');
+        }
+
+        function instantSearchSuggestions() {
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const query = document.getElementById('suggestionSearch').value.toLowerCase().trim();
+            const gemCards = document.querySelectorAll('#hiddenGemsContainer > .iphone-card');
+            const foodCards = document.querySelectorAll('#foodRecsContainer > .iphone-card');
+            const gemsSec = document.getElementById('gemsSection');
+            const foodSec = document.getElementById('foodSection');
+
+            let visibleGems = 0;
+            gemCards.forEach(card => {
+                const tags = (card.getAttribute('data-tags') || '').split(',');
+                const text = card.textContent.toLowerCase();
+                
+                const matchesCategory = (activeFilterType === 'all' || activeFilterType === 'gems' || tags.includes(activeFilterType));
+                const matchesSearch = text.includes(query);
+                
+                if (matchesCategory && matchesSearch) {
+                    card.style.display = 'flex';
+                    visibleGems++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            let visibleFoods = 0;
+            foodCards.forEach(card => {
+                const tags = (card.getAttribute('data-tags') || '').split(',');
+                const text = card.textContent.toLowerCase();
+                
+                const matchesCategory = (activeFilterType === 'all' || activeFilterType === 'food' || tags.includes(activeFilterType));
+                const matchesSearch = text.includes(query);
+                
+                if (matchesCategory && matchesSearch) {
+                    card.style.display = 'flex';
+                    visibleFoods++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Adjust section visibility based on selected filter and matches
+            if (activeFilterType === 'gems') {
+                gemsSec.style.display = 'block';
+                foodSec.style.display = 'none';
+            } else if (activeFilterType === 'food') {
+                gemsSec.style.display = 'none';
+                foodSec.style.display = 'block';
+            } else {
+                gemsSec.style.display = visibleGems > 0 ? 'block' : 'none';
+                foodSec.style.display = visibleFoods > 0 ? 'block' : 'none';
+            }
+
+            // Show "No matches" if zero visible cards in their respective sections
+            const noGemsMsgId = 'no-gems-search-result';
+            let noGemsMsg = document.getElementById(noGemsMsgId);
+            if (visibleGems === 0 && (activeFilterType === 'all' || activeFilterType === 'gems')) {
+                if (!noGemsMsg) {
+                    document.getElementById('hiddenGemsContainer').insertAdjacentHTML('beforeend', `<p id="${noGemsMsgId}" class="text-slate-400 font-bold text-xs italic pl-2 py-2">No matching spots found.</p>`);
+                }
+            } else if (noGemsMsg) {
+                noGemsMsg.remove();
+            }
+
+            const noFoodMsgId = 'no-food-search-result';
+            let noFoodMsg = document.getElementById(noFoodMsgId);
+            if (visibleFoods === 0 && (activeFilterType === 'all' || activeFilterType === 'food')) {
+                if (!noFoodMsg) {
+                    document.getElementById('foodRecsContainer').insertAdjacentHTML('beforeend', `<p id="${noFoodMsgId}" class="text-slate-400 font-bold text-xs italic pl-2 py-2">No matching eateries found.</p>`);
+                }
+            } else if (noFoodMsg) {
+                noFoodMsg.remove();
+            }
+
+            // Sync map markers to only show the ones currently visible
+            syncMapMarkersWithFilter(activeFilterType, query);
+        }
+
+        async function submitCustomPrompt() {
+            const promptInput = document.getElementById('rituPromptInput');
+            const query = promptInput.value.trim();
+            if (!query) return;
+
+            renderSkeletons();
+            const submitBtn = document.getElementById('submitPromptBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> Asking...`;
+
+            try {
+                const nodeRes = await fetch("/api/trips/all-saved", { credentials: "include" });
+                let history = [];
+                if (nodeRes.status !== 401) {
+                    const tripsData = await nodeRes.json();
+                    if (tripsData.success && tripsData.data) {
+                        history = tripsData.data.map(t => t.destination);
+                    }
+                }
+
+                document.getElementById('headerContext').innerHTML = `
+                    <div class="w-12 h-12 bg-sky-400 rounded-2xl flex items-center justify-center text-white text-xl mx-auto mb-4 shadow-lg shadow-sky-400/20 animate-pulse">
+                        <i class="fa-solid fa-sparkles"></i>
+                    </div>
+                    <h2 class="text-2xl font-black tracking-tight mb-1">Ritu is curating custom spots...</h2>
+                    <p class="text-slate-500 font-semibold text-sm">Searching for: <span class="text-sky-500">"${query}"</span></p>
+                `;
+
+                const aiRes = await fetch("/suggestions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ history: history, query: query })
+                });
+
+                suggestionsData = await aiRes.json();
+                renderSuggestionsUI(suggestionsData);
+
+                document.getElementById('headerContext').innerHTML = `
+                    <div class="w-12 h-12 bg-emerald-400 rounded-2xl flex items-center justify-center text-white text-xl mx-auto mb-4 shadow-lg shadow-emerald-400/20">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <h2 class="text-2xl font-black tracking-tight mb-1">Custom Curated: "${query}"</h2>
+                    <p class="text-slate-500 font-semibold text-sm">Found beautiful spots matching your request</p>
+                `;
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('headerContext').innerHTML = `<p class="text-red-500 font-bold">Failed to load suggestions.</p>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `Ask <i class="fa-solid fa-arrow-right text-[10px]"></i>`;
+            }
+        }
+
+        function setPromptAndSearch(val) {
+            document.getElementById('rituPromptInput').value = val;
+            submitCustomPrompt();
+        }
+
+        async function loadDefaultSuggestions() {
+            restoreSplitViewLayout();
+            initMap();
+            renderSkeletons();
+            
+            document.getElementById('headerContext').innerHTML = `
+                <div class="w-12 h-12 bg-sky-400 rounded-2xl flex items-center justify-center text-white text-xl mx-auto mb-4 shadow-lg shadow-sky-400/20 animate-pulse">
+                    <i class="fa-solid fa-sparkles"></i>
+                </div>
+                <h2 class="text-2xl font-black tracking-tight mb-1">General Recommendations</h2>
+                <p class="text-slate-500 font-semibold text-sm">Explore popular vibrant Indian destinations.</p>
+            `;
+            
+            try {
+                const aiRes = await fetch("/suggestions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ history: [] })
+                });
+                suggestionsData = await aiRes.json();
+                renderSuggestionsUI(suggestionsData);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('headerContext').innerHTML = `<p class="text-red-500 font-bold">Failed to load AI suggestions.</p>`;
+            }
+        }
+
+        // Load suggestions from Node/FastAPI
+        async function loadSuggestions() {
+            renderSkeletons();
+            try {
+                const nodeRes = await fetch("/api/trips/all-saved", { credentials: "include" });
+                if (nodeRes.status === 401) {
+                    showLoginGuard();
+                    return;
+                }
+                const tripsData = await nodeRes.json();
+                
+                let history = [];
+                if (tripsData.success && tripsData.data) {
+                    history = tripsData.data.map(t => t.destination);
+                }
+
+                document.getElementById('headerContext').innerHTML = `
+                    <div class="w-12 h-12 bg-emerald-400 rounded-2xl flex items-center justify-center text-white text-xl mx-auto mb-4 shadow-lg shadow-emerald-400/20">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <h2 class="text-2xl font-black tracking-tight mb-1">Custom Curated for You</h2>
+                    <p class="text-slate-500 font-semibold text-sm">Based on your past trips to: <span class="text-sky-500">${history.length > 0 ? history.join(', ') : 'New Horizons'}</span></p>
+                `;
+
+                const aiRes = await fetch("/suggestions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ history: history })
+                });
+                suggestionsData = await aiRes.json();
+                renderSuggestionsUI(suggestionsData);
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('headerContext').innerHTML = `<p class="text-red-500 font-bold">Failed to load AI suggestions. Ritu is operating in offline mode.</p>`;
+                // Load static fallback suggestions if Python API is completely down
+                suggestionsData = {
+                    hidden_gems: [
+                        { title: "Bahubali Hills", description: "Stunning viewpoint overlooking Badi Lake in Udaipur.", icon: "fa-mountain" },
+                        { title: "Tambdi Surla Temple", description: "12th-century stone temple hidden in the Western Ghats jungle in Goa.", icon: "fa-monument" }
+                    ],
+                    food_recommendations: [
+                        { title: "Dal Baati Churma", description: "Authentic Rajasthani wheat balls served with ghee and lentils.", icon: "fa-bowl-rice" },
+                        { title: "Goan Fish Curry Rice", description: "Traditional spicy coconut fish curry with red rice.", icon: "fa-utensils" }
+                    ]
+                };
+                renderSuggestionsUI(suggestionsData);
+            }
+        }
+
+        function renderSuggestionsUI(data) {
+            // 1. Hidden Gems Cards
+            const gemsHtml = (data.hidden_gems || []).map(g => {
+                const cityName = getParentCity(g.title);
+                const tagHtml = getTagChips(g);
+                const normTags = ['gem', ...getNormalizedTagsList(g)].join(',');
+                const favStatusClass = isFavorited(g.title) ? 'fa-solid text-rose-500' : 'fa-regular';
+                const slug = g.title.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+                
+                return `
+                <div id="card-${slug}" data-tags="${normTags}" onclick="locatePlace('${g.title.replace(/'/g, "\\'")}', '${g.description.replace(/'/g, "\\'")}', '${g.icon}')" class="iphone-card p-5 flex gap-4 items-start cursor-pointer group" style="border: 1px solid var(--border);">
+                    <div class="shrink-0 w-12 h-12 rounded-2xl overflow-hidden bg-sky-400/10 flex items-center justify-center text-xl text-sky-500 group-hover:scale-110 transition-transform relative">
+                        <img src="" data-query="${g.title} ${cityName}" class="suggestion-img w-full h-full object-cover absolute inset-0 opacity-0 transition-opacity duration-300" onload="this.classList.remove('opacity-0'); this.nextElementSibling.classList.add('opacity-0');" onerror="this.style.display='none';">
+                        <i class="fa-solid ${g.icon} icon-placeholder absolute flex items-center justify-center transition-opacity duration-300"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start gap-2">
+                            <h4 class="font-black text-sm group-hover:text-sky-400 transition-colors">${g.title}</h4>
+                            <div class="flex items-center gap-3" onclick="event.stopPropagation()">
+                                <button onclick="toggleFavorite('${g.title.replace(/'/g, "\\'")}', '${cityName.replace(/'/g, "\\'")}', '${g.icon}', '${g.description.replace(/'/g, "\\'")}', event)" class="fav-heart-btn text-slate-400 hover:text-red-500 transition-colors" title="Favorite">
+                                    <i class="${favStatusClass} fa-heart text-sm"></i>
+                                </button>
+                                <button onclick="locatePlace('${g.title.replace(/'/g, "\\'")}', '${g.description.replace(/'/g, "\\'")}', '${g.icon}')" class="text-[9px] text-sky-500 hover:text-sky-400 font-black uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-location-crosshairs"></i> Locate</button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 mb-2 leading-relaxed">${g.description}</p>
+                        <div class="flex flex-wrap gap-1.5 items-center mb-3">
+                            ${tagHtml}
+                        </div>
+                        <div class="mt-2 flex gap-2" onclick="event.stopPropagation()">
+                            <a href="/create-trip.html?dest=${encodeURIComponent(cityName)}" class="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-[#0F172A] px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:bg-sky-500 dark:hover:bg-sky-500">Plan Trip</a>
+                            <a href="#" onclick="openWikipediaPage('${g.title.replace(/'/g, "\\'")}', event); return false;" class="bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border border-slate-200 dark:border-white/5 flex items-center gap-1">Explore Wiki <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('hiddenGemsContainer').innerHTML = gemsHtml || '<p class="pl-2 text-slate-400 italic text-xs">No gems found.</p>';
+
+            // 2. Food Recommendations Cards
+            const foodHtml = (data.food_recommendations || []).map(f => {
+                const cityName = getParentCity(f.title);
+                const tagHtml = getTagChips(f);
+                const normTags = ['food', ...getNormalizedTagsList(f)].join(',');
+                const favStatusClass = isFavorited(f.title) ? 'fa-solid text-rose-500' : 'fa-regular';
+                const slug = f.title.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+                
+                return `
+                <div id="card-${slug}" data-tags="${normTags}" onclick="locatePlace('${f.title.replace(/'/g, "\\'")}', '${f.description.replace(/'/g, "\\'")}', '${f.icon}')" class="iphone-card p-5 flex gap-4 items-start cursor-pointer group" style="border: 1px solid var(--border);">
+                    <div class="shrink-0 w-12 h-12 rounded-2xl overflow-hidden bg-amber-400/10 flex items-center justify-center text-xl text-amber-500 group-hover:scale-110 transition-transform relative">
+                        <img src="" data-query="${f.title} ${cityName}" class="suggestion-img w-full h-full object-cover absolute inset-0 opacity-0 transition-opacity duration-300" onload="this.classList.remove('opacity-0'); this.nextElementSibling.classList.add('opacity-0');" onerror="this.style.display='none';">
+                        <i class="fa-solid ${f.icon} icon-placeholder absolute flex items-center justify-center transition-opacity duration-300"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start gap-2">
+                            <h4 class="font-black text-sm group-hover:text-amber-400 transition-colors">${f.title}</h4>
+                            <div class="flex items-center gap-3" onclick="event.stopPropagation()">
+                                <button onclick="toggleFavorite('${f.title.replace(/'/g, "\\'")}', '${cityName.replace(/'/g, "\\'")}', '${f.icon}', '${f.description.replace(/'/g, "\\'")}', event)" class="fav-heart-btn text-slate-400 hover:text-red-500 transition-colors" title="Favorite">
+                                    <i class="${favStatusClass} fa-heart text-sm"></i>
+                                </button>
+                                <button onclick="locatePlace('${f.title.replace(/'/g, "\\'")}', '${f.description.replace(/'/g, "\\'")}', '${f.icon}')" class="text-[9px] text-amber-500 hover:text-amber-400 font-black uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-location-crosshairs"></i> Locate</button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 mb-2 leading-relaxed">${f.description}</p>
+                        <div class="flex flex-wrap gap-1.5 items-center mb-3">
+                            ${tagHtml}
+                        </div>
+                        <div class="mt-2 flex gap-2" onclick="event.stopPropagation()">
+                            <a href="/create-trip.html?dest=${encodeURIComponent(cityName)}" class="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-[#0F172A] px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:bg-amber-500 dark:hover:bg-amber-500">Plan Trip</a>
+                            <a href="#" onclick="openWikipediaPage('${f.title.replace(/'/g, "\\'")}', event); return false;" class="bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border border-slate-200 dark:border-white/5 flex items-center gap-1">Explore Wiki <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('foodRecsContainer').innerHTML = foodHtml || '<p class="pl-2 text-slate-400 italic text-xs">No food found.</p>';
+            
+            // Auto plot recommendations on map and adjust view
+            plotAllSuggestionsOnMap(data);
+
+            // Trigger image lazyloader
+            lazyLoadSuggestionImages();
+
+            // Update weather widget based on first suggestion destination
+            if (data.hidden_gems && data.hidden_gems.length > 0) {
+                const primaryCity = getParentCity(data.hidden_gems[0].title);
+                updateWeatherForCity(primaryCity);
+            } else if (data.food_recommendations && data.food_recommendations.length > 0) {
+                const primaryCity = getParentCity(data.food_recommendations[0].title);
+                updateWeatherForCity(primaryCity);
+            } else {
+                document.getElementById('suggestionsWeatherWidget').classList.add('hidden');
+            }
+
+            // Clean up any search filter query
+            document.getElementById('suggestionSearch').value = '';
+        }
+
+        let weatherCacheMap = new Map();
+
+        async function updateWeatherForCity(cityName) {
+            const widget = document.getElementById('suggestionsWeatherWidget');
+            if (!widget) return;
+
+            let coords = CITY_COORDS[cityName];
+            let countryName = 'India';
+            if (!coords) {
+                try {
+                    const res = await fetch(`/api/geocode?q=${encodeURIComponent(cityName)}`);
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        coords = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+                        if (data[0].address && data[0].address.country) {
+                            countryName = data[0].address.country;
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Geocoding failed for weather lookup:", cityName, e);
+                }
+            }
+
+            if (!coords) {
+                widget.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const cacheKey = `${coords.lat.toFixed(3)},${coords.lon.toFixed(3)}`;
+                let wData = weatherCacheMap.get(cacheKey);
+
+                if (!wData) {
+                    const res = await fetch(`/api/weather?lat=${coords.lat}&lon=${coords.lon}&days=1&destination=${encodeURIComponent(cityName)}`);
+                    if (res.ok) {
+                        wData = await res.json();
+                        weatherCacheMap.set(cacheKey, wData);
+                    }
+                }
+
+                if (wData) {
+                    document.getElementById('weatherWidgetIcon').textContent = wData.current.icon;
+                    document.getElementById('weatherWidgetTemp').textContent = `${wData.current.temp}°C`;
+                    document.getElementById('weatherWidgetLabel').textContent = wData.current.label;
+                    document.getElementById('weatherWidgetCity').textContent = `${cityName} Weather`;
+                    document.getElementById('weatherWidgetHumidity').textContent = wData.current.humidity ? `${wData.current.humidity}%` : '—';
+                    document.getElementById('weatherWidgetWind').textContent = wData.current.windSpeed ? `${wData.current.windSpeed} km/h` : '—';
+
+                    const advisory = document.getElementById('weatherWidgetAdvisory');
+                    const advisoryText = document.getElementById('weatherWidgetAdvisoryText');
+                    if (wData.advisory) {
+                        advisoryText.textContent = wData.advisory;
+                        advisory.classList.remove('hidden');
+                    } else {
+                        advisory.classList.add('hidden');
+                    }
+
+                    widget.classList.remove('hidden');
+                    
+                    // Trigger Destination Info Board Update with dynamically resolved countryName
+                    updateSuggestionsDestinationBoard(cityName, coords.lat, coords.lon, countryName);
+                }
+            } catch (err) {
+                console.error("Failed to load weather for widget:", err);
+                widget.classList.add('hidden');
+            }
+        }
+
+        // Toggle Suggestions Destination Info collapse
+        let isSugDestInfoExpanded = true;
+        function toggleSuggestionsDestInfo() {
+            const expandable = document.getElementById('sugDestInfoExpandable');
+            const chevron = document.getElementById('sugDestInfoChevron');
+            if (!expandable || !chevron) return;
+            isSugDestInfoExpanded = !isSugDestInfoExpanded;
+            expandable.style.display = isSugDestInfoExpanded ? 'block' : 'none';
+            chevron.className = isSugDestInfoExpanded ? 'fa-solid fa-chevron-up text-[9px]' : 'fa-solid fa-chevron-down text-[9px]';
+        }
+
+        async function updateSuggestionsDestinationBoard(cityName, lat, lon, countryName = 'India') {
+            const panel = document.getElementById('suggestionsDestinationInfoPanel');
+            const badgeGrid = document.getElementById('sugCountryBadgeGrid');
+            const newsList = document.getElementById('sugDestinationNewsList');
+            if (!panel || !badgeGrid || !newsList) return;
+
+            panel.classList.remove('hidden');
+
+            try {
+                // Fetch country details from country proxy
+                const countryRes = await fetch(`/api/countries?name=${encodeURIComponent(countryName)}`);
+                if (countryRes.ok) {
+                    const country = await countryRes.json();
+                    badgeGrid.innerHTML = `
+                        <div class="flex items-center gap-1.5 bg-slate-100/70 dark:bg-white/5 p-2 rounded-xl border border-slate-200/50 dark:border-white/5">
+                            <span class="text-xs shrink-0">${country.flag}</span>
+                            <div class="truncate">
+                                <span class="block text-[7px] text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-0.5">Country</span>
+                                <span class="truncate font-black text-slate-700 dark:text-slate-200">${country.name}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 bg-slate-100/70 dark:bg-white/5 p-2 rounded-xl border border-slate-200/50 dark:border-white/5">
+                            <i class="fa-solid fa-landmark text-sky-400 text-xs shrink-0"></i>
+                            <div class="truncate">
+                                <span class="block text-[7px] text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-0.5">Capital</span>
+                                <span class="truncate font-black text-slate-700 dark:text-slate-200">${country.capital || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 bg-slate-100/70 dark:bg-white/5 p-2 rounded-xl border border-slate-200/50 dark:border-white/5">
+                            <i class="fa-solid fa-coins text-amber-500 text-xs shrink-0"></i>
+                            <div class="truncate">
+                                <span class="block text-[7px] text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-0.5">Currency</span>
+                                <span class="truncate font-black text-slate-700 dark:text-slate-200">${country.currency}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 bg-slate-100/70 dark:bg-white/5 p-2 rounded-xl border border-slate-200/50 dark:border-white/5">
+                            <i class="fa-solid fa-clock text-indigo-400 text-xs shrink-0"></i>
+                            <div class="truncate">
+                                <span class="block text-[7px] text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-0.5">Timezone</span>
+                                <span class="truncate font-black text-slate-700 dark:text-slate-200">${country.timezone ? country.timezone.split(',')[0] : 'N/A'}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.warn("REST countries lookup failed:", err);
+            }
+
+            try {
+                // Fetch dynamic news from news proxy
+                const newsRes = await fetch(`/api/news?q=${encodeURIComponent(cityName)}`);
+                if (newsRes.ok) {
+                    const data = await newsRes.json();
+                    if (data.articles && data.articles.length > 0) {
+                        newsList.innerHTML = data.articles.map(art => `
+                            <a href="${art.url}" target="_blank" class="block bg-slate-50/70 dark:bg-white/5 p-2 rounded-xl hover:bg-sky-500/10 border border-slate-200/50 dark:border-white/5 transition-all text-left pointer-events-auto">
+                                <span class="block text-[8px] font-black text-slate-700 dark:text-slate-200 hover:text-sky-500 leading-tight mb-0.5 line-clamp-1">${art.title}</span>
+                                <span class="block text-[7px] text-slate-400 dark:text-slate-500 font-medium line-clamp-2 leading-normal mb-1">${art.description}</span>
+                                <span class="text-[6px] font-black uppercase tracking-wider text-emerald-500/80 bg-emerald-500/10 px-1.5 py-0.5 rounded">${art.source}</span>
+                            </a>
+                        `).join('');
+                    } else {
+                        newsList.innerHTML = `<p class="text-[8px] text-slate-400 italic">No recent travel advisories found for this location.</p>`;
+                    }
+                }
+            } catch (err) {
+                console.warn("News lookup failed:", err);
+                newsList.innerHTML = `<p class="text-[8px] text-slate-400 italic">Failed to load news advisories.</p>`;
+            }
+        }
+
+        // Favorites Management
+        function getFavorites() {
+            return JSON.parse(localStorage.getItem('favorites_spots') || '[]');
+        }
+
+        function isFavorited(title) {
+            const favs = getFavorites();
+            return favs.some(f => f.title.toLowerCase() === title.toLowerCase());
+        }
+
+        function toggleFavorite(title, city, icon, description, event) {
+            if (event) event.stopPropagation();
+            let favs = getFavorites();
+            const index = favs.findIndex(f => f.title.toLowerCase() === title.toLowerCase());
+            
+            if (index > -1) {
+                favs.splice(index, 1);
+                if (window.showNotification) window.showNotification("Removed from favorites", "info");
+            } else {
+                favs.push({ title, city, icon, description });
+                if (window.showNotification) window.showNotification("Added to favorites", "success");
+            }
+            
+            localStorage.setItem('favorites_spots', JSON.stringify(favs));
+            
+            updateFavoritesUI();
+            
+            // Sync render suggestions UI to toggle heart state
+            if (suggestionsData) {
+                renderSuggestionsUI(suggestionsData);
+            }
+        }
+
+        function updateFavoritesUI() {
+            const favs = getFavorites();
+            const countEl = document.getElementById('favCount');
+            if (countEl) countEl.innerText = favs.length;
+            
+            const listEl = document.getElementById('favList');
+            if (!listEl) return;
+            
+            if (favs.length === 0) {
+                listEl.innerHTML = '<p class="text-slate-400 italic text-[11px] text-center py-6">Your favorite spots will appear here.</p>';
+                return;
+            }
+            
+            listEl.innerHTML = favs.map(f => `
+                <div class="flex justify-between items-center gap-2 p-2.5 rounded-xl bg-slate-100/50 dark:bg-slate-800/40 border border-slate-200/40 dark:border-white/5 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 transition-colors">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fa-solid ${f.icon || 'fa-location-dot'} text-sky-500 text-xs shrink-0"></i>
+                        <div class="overflow-hidden">
+                            <h5 class="font-black text-xs text-slate-800 dark:text-slate-200 truncate">${f.title}</h5>
+                            <p class="text-[9px] text-slate-400 font-bold">${f.city}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0">
+                        <button onclick="locatePlace('${f.title.replace(/'/g, "\\'")}', '${f.description.replace(/'/g, "\\'")}', '${f.icon}')" class="text-slate-500 hover:text-sky-500 text-[10px] transition-colors" title="Locate on Map"><i class="fa-solid fa-location-crosshairs"></i></button>
+                        <button onclick="toggleFavorite('${f.title.replace(/'/g, "\\'")}', '${f.city.replace(/'/g, "\\'")}', '${f.icon}', '${f.description.replace(/'/g, "\\'")}', event)" class="text-slate-400 hover:text-red-500 text-[10px] transition-colors" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleFavoritesDrawer() {
+            const drawer = document.getElementById('favoritesDrawer');
+            if (drawer) {
+                drawer.classList.toggle('active');
+            }
+        }
+
+        // Initialize Map & Load Data
+        window.addEventListener('load', () => {
+            originalSplitPaneHTML = document.querySelector('main > div.flex').innerHTML;
+            initMap();
+            updateFavoritesUI();
+            loadSuggestions();
+        });
+
+        function updateSpotlight(e) {
+            document.body.style.setProperty('--x', e.clientX + 'px');
+            document.body.style.setProperty('--y', e.clientY + 'px');
+        }
+    </script>
+    
+    <!-- Favorites UI Elements -->
+    <button onclick="toggleFavoritesDrawer()" id="favToggleBtn" class="floating-favorites-btn">
+        <i class="fa-solid fa-heart mr-2 text-rose-500"></i> Favorites (<span id="favCount">0</span>)
+    </button>
+
+    <div id="favoritesDrawer" class="favorites-drawer iphone-glass p-5 flex flex-col gap-4 border border-slate-200 dark:border-slate-800">
+        <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+            <h4 class="font-black text-xs uppercase tracking-wider flex items-center gap-1.5"><i class="fa-solid fa-heart text-red-500"></i> My Favorite Spots</h4>
+            <button onclick="toggleFavoritesDrawer()" aria-label="Close favorites drawer" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition"><i class="fa-solid fa-xmark text-sm"></i></button>
+        </div>
+        <div id="favList" class="flex-1 overflow-y-auto max-h-60 flex flex-col gap-2 custom-scrollbar">
+            <!-- Favorite items listed here -->
+        </div>
+        <div class="pt-2 text-center border-t border-slate-200 dark:border-slate-800">
+            <p class="text-[8px] opacity-40 font-bold uppercase tracking-widest">Saved locally on your device</p>
+        </div>
+    </div>
+
+    <script src="navbar.js"></script>
+    <script src="dynamic-bg.js"></script>
+</body>
+
+</html>

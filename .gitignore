@@ -1,0 +1,39 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+ai_backend/.venv/
+ai_backend/.vectordb/
+ai_backend/backend/__pycache__/
+__pycache__/
+*.py[cod]
+
+# Customizations & Agents
+.agents/
+
+# IDE / Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.stackdump
+
+# Deployment build folders
+.vercel/
+dist/
+build/

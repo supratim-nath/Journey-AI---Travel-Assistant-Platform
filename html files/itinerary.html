@@ -1,0 +1,2711 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="View your AI-generated day-by-day travel itinerary, interactive map, weather forecast, and chat with Ritu your AI travel companion.">
+    <title>Journey AI - Interactive Map</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+    <style>
+        /* Leaflet popup styling override to match MapCN / shadcn/ui */
+        .leaflet-custom-popup-modern .leaflet-popup-content-wrapper {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        [data-theme="dark"] .leaflet-custom-popup-modern .leaflet-popup-content-wrapper {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .leaflet-custom-popup-modern .leaflet-popup-tip {
+            background: rgba(255, 255, 255, 0.95);
+        }
+        [data-theme="dark"] .leaflet-custom-popup-modern .leaflet-popup-tip {
+            background: rgba(15, 23, 42, 0.95);
+        }
+        .leaflet-custom-popup-modern .leaflet-popup-content {
+            margin: 0;
+        }
+
+        body {
+            font-family: "Plus Jakarta Sans", sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        [data-theme="dark"] body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .iphone-glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px) saturate(1.5);
+            -webkit-backdrop-filter: blur(24px) saturate(1.5);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        }
+
+        [data-theme="dark"] .iphone-glass {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        /* High-Tech Glow border for map container in dark mode */
+        [data-theme="dark"] #mapPanel {
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.12), inset 0 0 20px rgba(56, 189, 248, 0.05);
+            border-color: rgba(56, 189, 248, 0.25) !important;
+        }
+
+        /* Futuristic Adaptable Midnight Map Filter */
+        /* Native dark tiles loaded via CartoDB are utilized, avoiding double-inversion filters */
+
+        /* Abstract dynamic waves bg */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Spotlight tracking mouse */
+        #spotlight {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            background: radial-gradient(circle 800px at var(--x, 50%) var(--y, 50%), rgba(56, 189, 248, 0.07), transparent 40%);
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 20px;
+        }
+
+        [data-theme="dark"] .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.1);
+        }
+        
+        /* Map custom overrides */
+        .leaflet-control-zoom a {
+            background-color: rgba(15, 23, 42, 0.8) !important;
+            color: white !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            backdrop-filter: blur(10px);
+        }
+        [data-theme="light"] .leaflet-control-zoom a {
+            background-color: white !important;
+            color: black !important;
+            border: 1px solid rgba(0,0,0,0.1) !important;
+        }
+
+        /* Smooth Chat Animations */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .chat-bubble-animate {
+            animation: slideInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .blue-tick {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .blue-tick:hover {
+            transform: scale(1.03) translateY(-1px);
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+        }
+        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Glowing neon line animations for Leaflet maps */
+        .neon-glow {
+            filter: drop-shadow(0 0 5px #38bdf8) drop-shadow(0 0 2px #38bdf8);
+            stroke-dasharray: 10, 15;
+            animation: mapDash 45s linear infinite;
+        }
+        @keyframes mapDash {
+            to {
+                stroke-dashoffset: -1000;
+            }
+        }
+        /* Leaflet custom tooltip */
+        .leaflet-custom-tooltip {
+            background: rgba(15, 23, 42, 0.92) !important;
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-radius: 10px !important;
+            color: #e2e8f0 !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            padding: 6px 10px !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+            white-space: nowrap !important;
+        }
+        .leaflet-custom-tooltip b { color: #38bdf8; }
+        .leaflet-custom-tooltip::before {
+            border-top-color: rgba(56, 189, 248, 0.3) !important;
+        }
+    </style>
+</head>
+
+<body onmousemove="updateSpotlight(event)" class="flex flex-col">
+    <canvas id="bg-canvas"></canvas>
+    <div id="spotlight"></div>
+    <nav></nav>
+    <main class="flex flex-col md:flex-row flex-1 overflow-hidden pt-20 md:pt-24 px-3 md:px-6 pb-3 md:pb-6 gap-3 md:gap-6 relative z-10 max-w-[1800px] mx-auto w-full">
+        <!-- Mobile Tab Switcher -->
+        <div id="mobileTabSwitcher" class="md:hidden flex justify-between p-1 bg-white/10 dark:bg-slate-800/40 border border-slate-200/50 dark:border-white/10 rounded-2xl mx-1 mb-2 relative z-20 shrink-0">
+            <button onclick="switchMobileTab('chat')" id="tabBtnChat" class="flex-1 py-3 text-[11px] font-bold uppercase tracking-wider rounded-xl transition duration-300 bg-sky-500 text-white shadow-md shadow-sky-500/20">
+                <i class="fa-solid fa-comments text-xs mr-1"></i> Chat Scout
+            </button>
+            <button onclick="switchMobileTab('map')" id="tabBtnMap" class="flex-1 py-3 text-[11px] font-bold uppercase tracking-wider rounded-xl transition duration-300 text-slate-500 dark:text-slate-400">
+                <i class="fa-solid fa-map text-xs mr-1"></i> Interactive Map
+            </button>
+        </div>
+        
+        <!-- Left Panel: AI Chat Interface -->
+        <section id="chatPanel" class="flex flex-col flex-1 md:flex-[1.2] iphone-glass rounded-[24px] md:rounded-[40px] overflow-hidden shadow-2xl border border-sky-400/20 md:border-2 md:flex">
+            <!-- Header -->
+            <div class="p-3 md:p-6 border-b border-white/10 flex items-center gap-3 md:gap-4 bg-white/5 backdrop-blur-md relative z-10">
+                <div class="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-sky-500/30 shrink-0">
+                    <i class="fa-solid fa-wand-magic-sparkles text-sm md:text-xl"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h2 class="text-sm md:text-base font-bold tracking-tight text-slate-800 dark:text-white flex items-center gap-2 truncate">
+                        Ritu <span class="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-500 text-[8px] uppercase font-bold tracking-widest hidden sm:inline">Co-Pilot</span>
+                    </h2>
+                    <div class="flex items-center gap-1.5 truncate mt-0.5">
+                        <span id="aiStatus" class="font-bold text-[8px] md:text-[9px] uppercase tracking-widest text-emerald-400">Connecting...</span>
+                        <span class="text-white/20">&bull;</span>
+                        <span id="displayTitle" class="font-bold text-[8px] md:text-[9px] uppercase tracking-widest text-slate-400 dark:text-slate-300"></span>
+                        <span class="text-white/20">&bull;</span>
+                        <span id="displayStats" class="font-bold text-[8px] md:text-[9px] text-sky-500 truncate">--</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="shareToWhatsApp()"
+                        class="bg-[#25D366] hover:bg-[#22c35e] text-white px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:scale-[1.03] transition-all shadow-md shadow-emerald-500/10 active:scale-95">
+                        <i class="fa-brands fa-whatsapp text-xs md:text-sm"></i> <span>Share</span>
+                    </button>
+                    <button onclick="saveTripAndRedirect()"
+                        class="bg-sky-500 hover:bg-sky-600 text-white px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:scale-[1.03] transition-all shadow-md shadow-sky-500/10 active:scale-95">
+                        <i class="fa-solid fa-bookmark text-xs md:text-sm"></i> <span>Save</span>
+                    </button>
+                    <button id="analyzerToggleBtn" onclick="toggleAnalyzerVisibility()"
+                        class="bg-white/40 dark:bg-slate-800/40 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:scale-[1.03] transition-all hover:text-sky-500 hover:border-sky-500/50 shadow-sm">
+                        <i class="fa-solid fa-route text-xs md:text-sm"></i> <span>Route</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Weather Alert Banner -->
+            <div id="weatherAlertBanner" class="px-4 py-2.5 bg-gradient-to-r from-sky-400/10 to-indigo-500/10 backdrop-blur-md border-b border-slate-200/50 dark:border-white/10 flex items-center justify-between gap-3 text-[11px] font-bold text-slate-700 dark:text-slate-200 transition-all duration-300 relative z-10 select-none cursor-pointer hover:from-sky-400/20 hover:to-indigo-500/20" onclick="askWeatherAdvice()">
+                <div class="flex items-center gap-2">
+                    <span id="weatherIcon" class="text-sm text-yellow-400 animate-pulse"><i class="fa-solid fa-cloud-sun-rain"></i></span>
+                    <span id="weatherText" class="truncate max-w-[200px] sm:max-w-md">Analyzing local destination climate...</span>
+                </div>
+                <span class="text-[8px] font-bold bg-sky-500/20 text-sky-600 dark:text-sky-400 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0 uppercase tracking-wider">
+                    Ask Ritu <i class="fa-solid fa-chevron-right text-[6px]"></i>
+                </span>
+            </div>
+
+            <!-- Chat messages container -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 space-y-4 md:space-y-6 custom-scroll" id="chatContainer">
+                <!-- Dynamic Bubbles Go Here -->
+            </div>
+
+            <!-- Input area -->
+            <div class="p-3 md:p-6 bg-white/40 dark:bg-slate-900/30 border-t border-slate-200/50 dark:border-white/5 backdrop-blur-md relative z-10">
+                <!-- Quick Suggestion Chips -->
+                <div class="flex gap-2 overflow-x-auto pb-3 mb-2 no-scrollbar shrink-0 select-none scroll-smooth">
+                    <button onclick="sendQuickAction('What food spots do you recommend?')" class="chip-action px-3.5 py-1.5 rounded-full text-[10px] md:text-[11px] font-bold uppercase tracking-wider bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 hover:bg-sky-500/5 dark:hover:bg-sky-500/10 hover:text-sky-500 dark:hover:text-sky-400 transition-all duration-300 shrink-0 flex items-center gap-1.5 text-slate-700 dark:text-slate-200 shadow-sm">
+                        <i class="fa-solid fa-bowl-rice text-xs text-orange-400"></i> Local Food
+                    </button>
+                    <button onclick="sendQuickAction('What should I pack for this trip?')" class="chip-action px-3.5 py-1.5 rounded-full text-[10px] md:text-[11px] font-bold uppercase tracking-wider bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 hover:bg-sky-500/5 dark:hover:bg-sky-500/10 hover:text-sky-500 dark:hover:text-sky-400 transition-all duration-300 shrink-0 flex items-center gap-1.5 text-slate-700 dark:text-slate-200 shadow-sm">
+                        <i class="fa-solid fa-suitcase text-xs text-emerald-400"></i> Packing Tips
+                    </button>
+                    <button onclick="sendQuickAction('How is the local transport and getting around?')" class="chip-action px-3.5 py-1.5 rounded-full text-[10px] md:text-[11px] font-bold uppercase tracking-wider bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 hover:bg-sky-500/5 dark:hover:bg-sky-500/10 hover:text-sky-500 dark:hover:text-sky-400 transition-all duration-300 shrink-0 flex items-center gap-1.5 text-slate-700 dark:text-slate-200 shadow-sm">
+                        <i class="fa-solid fa-taxi text-xs text-sky-400"></i> Getting Around
+                    </button>
+                    <button onclick="sendQuickAction('What budget details and ticket prices should I expect?')" class="chip-action px-3.5 py-1.5 rounded-full text-[10px] md:text-[11px] font-bold uppercase tracking-wider bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 hover:bg-sky-500/5 dark:hover:bg-sky-500/10 hover:text-sky-500 dark:hover:text-sky-400 transition-all duration-300 shrink-0 flex items-center gap-1.5 text-slate-700 dark:text-slate-200 shadow-sm">
+                        <i class="fa-solid fa-wallet text-xs text-yellow-400"></i> Budget Details
+                    </button>
+                    <button onclick="sendQuickAction('Show me safety tips and local culture etiquette')" class="chip-action px-3.5 py-1.5 rounded-full text-[10px] md:text-[11px] font-bold uppercase tracking-wider bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 hover:border-sky-500 dark:hover:border-sky-500 hover:bg-sky-500/5 dark:hover:bg-sky-500/10 hover:text-sky-500 dark:hover:text-sky-400 transition-all duration-300 shrink-0 flex items-center gap-1.5 text-slate-700 dark:text-slate-200 shadow-sm">
+                        <i class="fa-solid fa-shield-halved text-xs text-indigo-400"></i> Safety & Tips
+                    </button>
+                </div>
+                <div class="relative flex items-center gap-2 md:gap-3">
+                    <input id="chatInput" type="text" placeholder="Ask questions, or edit: 'Add Chapora Fort to Day 2'..."
+                        class="flex-1 bg-white/80 dark:bg-slate-800/40 border border-slate-200/60 dark:border-white/10 rounded-xl md:rounded-2xl py-3 px-4 md:py-3.5 md:px-5 text-xs md:text-sm font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all shadow-sm animate-pulse-once"
+                        onkeydown="if(event.key==='Enter') sendMessage()">
+                    <button id="sendBtn" onclick="sendMessage()"
+                        class="w-10 h-10 md:w-12 md:h-12 bg-sky-500 hover:bg-sky-600 text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-sky-500/20 hover:scale-[1.03] transition-all duration-200 shrink-0 active:scale-95">
+                        <i class="fa-solid fa-paper-plane text-xs md:text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Interactive Leaflet Map -->
+        <section id="mapPanel" class="hidden md:flex flex-col flex-1 md:flex-[1.5] iphone-glass rounded-[24px] md:rounded-[40px] overflow-hidden border border-white/10 md:border-2 relative shadow-2xl">
+            <div id="map" class="w-full h-full rounded-[22px] md:rounded-[38px] z-0"></div>
+            
+            <!-- Map Day-Route Legend & Info Sidebar (stacked cleanly to avoid overlap) -->
+            <div id="mapSidebarContainer" class="absolute top-4 left-4 w-[280px] z-[400] flex flex-col gap-3.5 pointer-events-none transition-all duration-300">
+
+                <!-- MapCN Route Summary Card -->
+                <div id="routeSummaryCard" class="pointer-events-auto iphone-glass p-3.5 rounded-[20px] shadow-2xl border border-slate-200/50 dark:border-white/15 w-full transition-all duration-300 select-none hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-sky-500/10 dark:bg-sky-500/20 rounded-lg flex items-center justify-center text-sky-500">
+                                <i class="fa-solid fa-route"></i>
+                            </div>
+                            <div>
+                                <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">Total Distance</p>
+                                <h4 id="routeSummaryDistance" class="text-[11px] font-bold text-slate-800 dark:text-slate-100">0.0 km</h4>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400">
+                                <i class="fa-solid fa-clock"></i>
+                            </div>
+                            <div>
+                                <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">Travel Time</p>
+                                <h4 id="routeSummaryDuration" class="text-[11px] font-bold text-slate-800 dark:text-slate-100">0 mins</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Route & Transit Analyzer Panel -->
+                <div id="routeAnalyzerPanel" class="pointer-events-auto iphone-glass p-4 rounded-[20px] shadow-2xl border border-slate-200/50 dark:border-white/15 w-full transition-all duration-300 select-none hidden">
+                    <div class="flex items-center justify-between mb-2.5 border-b border-slate-200 dark:border-white/10 pb-1.5">
+                        <h4 class="font-black text-[10px] uppercase tracking-wider text-sky-500 flex items-center gap-1.5"><i class="fa-solid fa-route"></i> Route Transit Analyzer</h4>
+                        <button onclick="toggleRouteAnalyzer()" class="text-slate-400 hover:text-sky-500 transition"><i class="fa-solid fa-chevron-up text-[9px]" id="analyzerChevron"></i></button>
+                    </div>
+                    <div id="routeAnalyzerExpandable" class="space-y-2.5">
+                        <div id="routeAnalyzerContent" class="space-y-2 max-h-48 overflow-y-auto custom-scroll pr-1 text-slate-800 dark:text-slate-200">
+                            <!-- Dynamic Transit Steps Go Here -->
+                        </div>
+                        <div class="mt-2 pt-1.5 border-t border-slate-200/50 dark:border-white/5">
+                            <p class="text-[8px] font-bold text-slate-400 flex items-center gap-1"><i class="fa-solid fa-info-circle text-sky-400"></i> Distances are straight-line (haversine) estimates</p>
+                        </div>
+                        <div class="mt-3.5 pt-2.5 border-t border-slate-200 dark:border-white/10">
+                            <button onclick="triggerRouteOptimization()" class="w-full bg-sky-500 hover:bg-sky-600 text-white py-2 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-lg shadow-sky-500/20 active:scale-95">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Optimize Route
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Map Day-Route Legend -->
+                <div id="mapLegendPanel" class="pointer-events-auto iphone-glass px-3.5 py-2.5 rounded-[16px] shadow-xl border border-slate-200/40 dark:border-white/10 w-full transition-all duration-300">
+                    <div class="flex items-center justify-between mb-1.5 border-b border-slate-200/50 dark:border-white/5 pb-1">
+                        <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">Route Legend</p>
+                        <button id="showAllDaysBtn" onclick="highlightDayRoute(null)" class="text-[8px] font-black uppercase tracking-widest bg-sky-500/20 text-sky-500 hover:bg-sky-500 hover:text-white px-2 py-0.5 rounded transition duration-200" style="display: none;">Show All</button>
+                    </div>
+                    <div id="mapLegend" class="flex flex-row flex-wrap gap-2 text-slate-700 dark:text-slate-300"></div>
+                </div>
+            </div>
+            
+            <div id="placePopup" class="absolute bottom-4 left-4 right-4 md:bottom-10 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-[480px] md:max-w-[calc(100%-2rem)] iphone-glass p-0 rounded-[20px] md:rounded-[32px] shadow-2xl overflow-hidden transition-all duration-500 transform translate-y-[150%] opacity-0 z-50 pointer-events-none border border-slate-200/50 dark:border-white/10">
+                <div class="w-full h-56 bg-slate-200 relative overflow-hidden group">
+                    <img id="popupImg" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" src="" alt="Place photo">
+                    <div id="imageFallbackText" class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 transition-opacity duration-300 pointer-events-none">
+                        <span class="text-white font-bold text-sm md:text-base text-center px-6 leading-tight uppercase tracking-wider"><i class="fa-solid fa-camera-viewfinder mb-2 block text-2xl opacity-50"></i> Images of this place<br>aren't available</span>
+                    </div>
+                    <button onclick="closePopup()" aria-label="Close popup" class="absolute top-4 right-4 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full text-white flex items-center justify-center hover:bg-black/70 pointer-events-auto transition hover:rotate-90 shadow-xl">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                    <!-- Gradient overlay -->
+                    <div class="absolute bottom-0 w-full h-2/3 bg-gradient-to-t from-slate-950/85 to-transparent"></div>
+                    
+                    <div class="absolute bottom-5 left-6 right-6 z-10 drop-shadow-md">
+                        <h4 id="popupTitle" class="font-bold text-2xl md:text-3xl text-white mb-1 tracking-tight leading-tight line-clamp-2">Loading...</h4>
+                    </div>
+                </div>
+                <div class="p-6 md:p-8 font-sans bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl border-t border-slate-200 dark:border-slate-800 pointer-events-auto relative">
+                    <p id="popupDesc" class="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed max-h-32 overflow-y-auto custom-scroll pr-3"></p>
+                    <div class="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] uppercase font-bold tracking-wider text-slate-400">
+                        <span id="popupSourceBadge" class="flex items-center gap-2"><i class="fa-brands fa-wikipedia-w"></i> Verified Wiki Info</span>
+                        <a id="wikiLink" target="_blank" href="#" class="text-sky-500 hover:text-sky-400 transition flex items-center gap-1.5 p-2 -m-2 opacity-80 hover:opacity-100 font-bold uppercase tracking-wider">Explore <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // ─── Constants & State ──────────────────────────────────────────
+        const AI_API = '/chat';
+        let map;
+        let activeMarker;
+        let currentTripData = null;
+        let dayVisibilityMap = {};
+        const tripId = new URLSearchParams(window.location.search).get('id');
+
+        function getSessionId() {
+            let sid = sessionStorage.getItem('ritu_session_id');
+            if (!sid) {
+                sid = 'session_' + Math.random().toString(36).slice(2) + Date.now();
+                sessionStorage.setItem('ritu_session_id', sid);
+            }
+            return sid;
+        }
+
+        function setStatus(text, color = 'text-emerald-500') {
+            const el = document.getElementById('aiStatus');
+            el.textContent = text;
+            el.className = `font-bold text-[11px] uppercase tracking-widest ${color}`;
+        }
+
+        // ─── Chat Logic & UI ──────────────────────────────────────────────
+        function sendQuickAction(text) {
+            const input = document.getElementById('chatInput');
+            input.value = text;
+            sendMessage();
+        }
+
+        function appendMessage(role, text) {
+            const container = document.getElementById('chatContainer');
+            const isUser = role === 'user';
+            
+            const bubble = document.createElement('div');
+            bubble.className = (isUser ? 'flex justify-end' : 'flex justify-start items-start gap-3') + ' chat-bubble-animate w-full mb-1';
+
+            // Icon map for structured itinerary keys
+            const KEY_ICONS = {
+                'Morning':                  { icon: 'fa-sun',             color: '#f59e0b', label: 'Morning'                   },
+                'Afternoon':                { icon: 'fa-cloud-sun',       color: '#fb923c', label: 'Afternoon'                 },
+                'Evening':                  { icon: 'fa-moon',            color: '#8b5cf6', label: 'Evening'                   },
+                'Date':                     { icon: 'fa-calendar-days',   color: '#0ea5e9', label: 'Date'                      },
+                'Overnight Stay':           { icon: 'fa-bed',             color: '#10b981', label: 'Overnight Stay'            },
+                'Estimated Travel Time':    { icon: 'fa-clock',           color: '#64748b', label: 'Est. Travel Time'          },
+                'Estimated Travel Distance':{ icon: 'fa-road',            color: '#64748b', label: 'Est. Distance'             },
+                'Primary Transport Method': { icon: 'fa-van-shuttle',     color: '#0ea5e9', label: 'Transport'                 },
+                'Important Travel Notes':   { icon: 'fa-circle-info',     color: '#ec4899', label: 'Travel Notes'             },
+            };
+
+            // 1. Convert **Locations** to Blue Ticks
+            let formatted = text.replace(/\*\*(.*?)\*\*/g, (match, p1) => {
+                const safeName = p1.replace(/'/g, "\\'");
+                return `<span class="blue-tick inline-flex items-center gap-1.5 bg-sky-100 dark:bg-sky-500/20 border border-sky-500/30 text-sky-600 dark:text-sky-400 px-3 py-1 rounded-lg cursor-pointer hover:bg-sky-500 hover:text-white transition-all shadow-sm font-bold mx-0.5" onclick="handleLocationClick(event, '${safeName}')">${p1} <i class="fa-solid fa-map-location-dot text-[11px] ml-0.5"></i></span>`;
+            });
+            
+            // 2. Format ### Day Headers (Markdown H3)
+            formatted = formatted.replace(/###\s*(Day\s*\d+[^\n]*)/gi, '<h4 class="text-sky-500 dark:text-sky-400 font-bold text-base mt-5 mb-2 flex items-center gap-2"><span class="inline-block w-2 h-2 bg-sky-500 rounded-full"></span>$1</h4>');
+            
+            // 3. Format "Day X:" bare headers without ###
+            formatted = formatted.replace(/^(Day \d+:[^\n]*?)(?=\n|$)/gm, (m) => {
+                if (m.includes('<h4')) return m;
+                // If this line is JUST "Day N:" (no long text after it), render as a header
+                if (/^Day \d+:\s*$/.test(m.trim())) {
+                    return `<h4 class="text-sky-500 dark:text-sky-400 font-bold text-base mt-5 mb-2 flex items-center gap-2"><span class="inline-block w-2 h-2 bg-sky-500 rounded-full"></span>${m.trim()}</h4>`;
+                }
+                return m;
+            });
+
+            // 4. Render structured key-value lines as icon-badged cards
+            formatted = formatted.replace(/^-\s+([\w\s]+?):\s*(.*)$/gm, (match, key, value) => {
+                const trimmedKey = key.trim();
+                if (KEY_ICONS[trimmedKey]) {
+                    const cfg = KEY_ICONS[trimmedKey];
+                    const isMeta = ['Overnight Stay','Estimated Travel Time','Estimated Travel Distance','Primary Transport Method','Important Travel Notes','Date'].includes(trimmedKey);
+                    if (isMeta) {
+                        return `<div class="flex items-start gap-2 py-1.5 px-3 my-1 rounded-xl" style="background:${cfg.color}18;border-left:3px solid ${cfg.color};">
+                            <i class="fa-solid ${cfg.icon} text-[12px] mt-0.5 shrink-0" style="color:${cfg.color};"></i>
+                            <span class="text-[12px] font-semibold" style="color:${cfg.color};">${cfg.label}:</span>
+                            <span class="text-[12px] text-slate-700 dark:text-slate-300 flex-1">${value}</span>
+                        </div>`;
+                    } else {
+                        return `<div class="mt-3 mb-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full shrink-0" style="background:${cfg.color}22;">
+                                    <i class="fa-solid ${cfg.icon} text-[10px]" style="color:${cfg.color};"></i>
+                                </span>
+                                <span class="text-[11px] font-extrabold uppercase tracking-wider" style="color:${cfg.color};">${cfg.label}</span>
+                            </div>
+                            <div class="pl-8 text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">${value}</div>
+                        </div>`;
+                    }
+                }
+                // Fallback: render as arrow bullet
+                return `<div class="flex items-start gap-2 py-1"><span class="text-sky-500 mt-1 shrink-0 text-[10px]">▸</span><span>${match.slice(2)}</span></div>`;
+            });
+            
+            // 5. Format remaining plain bullet points (- or * or •)
+            formatted = formatted.replace(/^[-*•]\s+(.*?)$/gm, '<div class="flex items-start gap-2 py-1"><span class="text-sky-500 mt-1 shrink-0 text-[10px]">▸</span><span>$1</span></div>');
+            
+            // Format numbered list items
+            formatted = formatted.replace(/^(\d+)\.\s+(.*?)$/gm, '<div class="flex items-start gap-2 py-1"><span class="text-sky-500 mt-0.5 shrink-0 font-extrabold">$1.</span><span>$2</span></div>');
+            
+            // 6. Newlines to breaks
+            formatted = formatted.replace(/\n/g, '<br>');
+
+            let avatarHtml = '';
+            if (!isUser) {
+                avatarHtml = `
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center text-white shadow-md shrink-0 mt-1">
+                        <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+                    </div>
+                `;
+            }
+
+            bubble.innerHTML = `
+                ${avatarHtml}
+                <div class="max-w-[85%] px-5 py-4 text-[13px] md:text-sm font-medium leading-relaxed shadow-md
+                    ${isUser
+                    ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white rounded-2xl rounded-tr-none ml-auto shadow-[0_4px_15px_rgba(56,189,248,0.15)]'
+                    : 'bg-white/80 dark:bg-slate-800/40 backdrop-blur-md border border-slate-200/50 dark:border-white/5 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-none'}"
+                    style="word-break: break-word;">
+                    ${formatted}
+                </div>`;
+
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
+        }
+
+
+        function showTypingIndicator() {
+            const container = document.getElementById('chatMessagesContainer');
+            const el = document.createElement('div');
+            el.id = 'typingIndicator';
+            el.className = 'flex justify-start items-start gap-3 w-full';
+            el.innerHTML = `
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center text-white shadow-md shrink-0 mt-1">
+                    <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+                </div>
+                <div class="px-5 py-4 bg-white/80 dark:bg-slate-800/40 backdrop-blur-md border border-slate-200/50 dark:border-white/5 rounded-2xl rounded-tl-none shadow-md flex flex-col gap-1.5 max-w-[85%]">
+                    <span class="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-1">Ritu is planning...</span>
+                    <div class="flex gap-1.5 items-center">
+                        <span class="w-2 h-2 bg-sky-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
+                        <span class="w-2 h-2 bg-sky-400 rounded-full animate-bounce" style="animation-delay:150ms"></span>
+                        <span class="w-2 h-2 bg-sky-400 rounded-full animate-bounce" style="animation-delay:300ms"></span>
+                    </div>
+                </div>`;
+            container.appendChild(el);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const el = document.getElementById('typingIndicator');
+            if (el) el.remove();
+        }
+
+        async function callRitu(message) {
+            const sessionId = getSessionId();
+            const response = await fetch(AI_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    session_id: sessionId, 
+                    message,
+                    current_itinerary: currentTripData ? currentTripData.itineraryData : null,
+                    tripId: tripId
+                })
+            });
+            if (response.status === 429) {
+                const errData = await response.json();
+                throw new Error(errData.message || 'Rate limit exceeded');
+            }
+            if (!response.ok) throw new Error('AI server error');
+            const data = await response.json();
+            return data;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const btn = document.getElementById('sendBtn');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            input.disabled = true;
+            btn.disabled = true;
+
+            appendMessage('user', text);
+            showTypingIndicator();
+            setStatus('Thinking...', 'text-yellow-400');
+
+            try {
+                const data = await callRitu(text);
+                const reply = data.response;
+                hideTypingIndicator();
+                appendMessage('assistant', reply);
+                setStatus('Online', 'text-emerald-400');
+
+                // Sync chat history locally in currentTripData to maintain perfect state alignment
+                if (currentTripData) {
+                    if (!currentTripData.chatHistory) currentTripData.chatHistory = [];
+                    currentTripData.chatHistory.push({ role: 'user', content: text });
+                    currentTripData.chatHistory.push({ role: 'assistant', content: reply });
+                }
+
+                // 1. Plot new locations on the map in real-time
+                const dest = (currentTripData ? currentTripData.destination : '') || 'India';
+                plotNewLocations(reply, dest);
+
+                // 2. Reconcile and rebuild local itinerary schedule dynamically
+                if (currentTripData && currentTripData.itineraryData) {
+                    let schedule = currentTripData.itineraryData.schedule || [];
+                    let scheduleChanged = false;
+
+                    const deleteMatch = text.match(/(?:delete|remove)\s+day\s+(\d+)/i);
+                    if (deleteMatch) {
+                        const dayToDelete = parseInt(deleteMatch[1]);
+                        const originalLength = schedule.length;
+                        schedule = schedule.filter(d => d.day !== dayToDelete);
+                        // Shift subsequent days down
+                        schedule.forEach(d => {
+                            if (d.day > dayToDelete) {
+                                d.day -= 1;
+                            }
+                        });
+                        if (schedule.length !== originalLength) {
+                            scheduleChanged = true;
+                        }
+                    } else if (data.replace_all && data.itinerary_updates && data.itinerary_updates.length > 0) {
+                        // Check if reply mentions a new destination to update banner and title
+                        const destMatch = reply.match(/itinerary for \*\*(.*?)\*\*/i) || reply.match(/trip to \*\*(.*?)\*\*/i);
+                        if (destMatch && destMatch[1]) {
+                            currentTripData.destination = destMatch[1];
+                            document.getElementById('displayTitle').innerText = `Trip to ${currentTripData.destination}`;
+                            updateWeatherBanner(currentTripData.destination);
+                            destinationCoords = null; // Reset cache so coordinates are resolved correctly for the new destination
+                        }
+                        
+                        schedule = data.itinerary_updates.map(update => ({
+                            day: update.day,
+                            activity: update.activity,
+                            location: currentTripData.destination
+                        }));
+                        scheduleChanged = true;
+                    } else if (data.itinerary_updates && data.itinerary_updates.length > 0) {
+                        const scheduleMap = {};
+                        schedule.forEach(d => {
+                            scheduleMap[d.day] = d;
+                        });
+
+                        data.itinerary_updates.forEach(update => {
+                            const existingDay = scheduleMap[update.day];
+                            scheduleMap[update.day] = {
+                                day: update.day,
+                                activity: update.activity,
+                                location: existingDay ? existingDay.location : currentTripData.destination
+                            };
+                        });
+
+                        schedule = Object.keys(scheduleMap)
+                            .map(k => scheduleMap[k])
+                            .sort((a, b) => a.day - b.day);
+                        scheduleChanged = true;
+                    }
+
+                    if (scheduleChanged) {
+                        currentTripData.itineraryData.schedule = schedule;
+                        currentTripData.days = schedule.length;
+
+                        // Update header stats in real time
+                        document.getElementById('displayStats').innerText = `${currentTripData.days} Days • ₹${currentTripData.budget} • ${currentTripData.vibe}`;
+
+                        // Save back to sessionStorage for save trip feature
+                        sessionStorage.setItem('tempTrip', JSON.stringify(currentTripData));
+
+                        // Re-plot all locations and routes sequentially to keep map & transit sync'd
+                        plotAllLocationsSequential(schedule, currentTripData.destination);
+                    }
+                }
+            } catch (err) {
+                hideTypingIndicator();
+                if (err.message.includes('Rate limit exceeded') || err.message.includes('breath')) {
+                    appendMessage('assistant', `⚠️ ${err.message}`);
+                    setStatus('Rate Limited', 'text-yellow-400');
+                } else {
+                    appendMessage('assistant', '⚠️ Could not reach the AI Engine. Please check your FastAPI python server status.');
+                    setStatus('Offline', 'text-red-400');
+                }
+            } finally {
+                input.disabled = false;
+                btn.disabled = false;
+                input.focus();
+            }
+        }
+
+        // ─── Map & Blue Tick Core Engine ──────────────────────────────────────
+        let activeTileLayer = null;
+        function initMap() {
+            map = L.map('map', { zoomControl: false, maxZoom: 18 }).setView([20.5937, 78.9629], 5);
+            updateMapTileLayer(document.documentElement.getAttribute('data-theme') || 'light');
+            L.control.zoom({ position: 'topright' }).addTo(map);
+        }
+
+        function updateMapTileLayer(theme) {
+            if (activeTileLayer) {
+                map.removeLayer(activeTileLayer);
+            }
+            const tileUrl = theme === 'dark' 
+                ? 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+                
+            activeTileLayer = L.tileLayer(tileUrl, {
+                attribution: '&copy; OpenStreetMap contributors, &copy; CARTO'
+            }).addTo(map);
+        }
+
+        // Listen for global themechanged event
+        window.addEventListener('themechanged', (e) => {
+            updateMapTileLayer(e.detail.theme);
+        });
+
+        async function handleLocationClick(event, placeName) {
+            // Un-highlight previous ticks
+            document.querySelectorAll('.blue-tick').forEach(el => {
+                el.classList.remove('ring-2', 'ring-sky-500', 'bg-sky-500', 'text-white');
+            });
+            // Highlight current clicked tick (if clicked from chat)
+            if (event && event.currentTarget && event.currentTarget.classList) {
+                event.currentTarget.classList.add('ring-2', 'ring-sky-500', 'bg-sky-500', 'text-white');
+            }
+            
+            showPopupLoading(placeName);
+
+            try {
+                // 1. Fetch Coordinates from OpenStreetMap
+                const destinationStr = document.getElementById('displayTitle').innerText.replace('Trip to ', '').trim() || "India";
+                const searchQuery = `${placeName}, ${destinationStr}`;
+                const osmRes = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}`);
+                const osmData = await osmRes.json();
+                
+                if (osmData && osmData.length > 0) {
+                    const lat = parseFloat(osmData[0].lat);
+                    const lon = parseFloat(osmData[0].lon);
+                    
+                    if (!isNaN(lat) && !isNaN(lon) && isFinite(lat) && isFinite(lon)) {
+                        // Smooth zoom
+                        map.flyTo([lat, lon], 15, { duration: 1.5 });
+                        
+                        if (activeMarker) map.removeLayer(activeMarker);
+                        
+                        const customIcon = L.divIcon({
+                            html: `<div class="w-12 h-12 bg-sky-500 rounded-full border-4 border-white shadow-2xl flex items-center justify-center text-white text-lg animate-bounce drop-shadow-xl"><i class="fa-solid fa-location-dot"></i></div>`,
+                            className: 'bg-transparent',
+                            iconSize: [48, 48],
+                            iconAnchor: [24, 48]
+                        });
+                        activeMarker = L.marker([lat, lon], {icon: customIcon}).addTo(map);
+                    }
+                }
+
+                // 2. Intelligence Priority Layer
+                //    First try Wikipedia for high-accuracy official data.
+                //    If Wikipedia fails or lacks a thumbnail, fallback to Unsplash for generic beauty.
+                
+                const fallbackScenery = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=800";
+                let title = placeName;
+                let desc = `An incredible stop scheduled on your trip to ${destinationStr}. Ready for exploration!`;
+                let imgSrc = fallbackScenery; // Stock Fallback
+                let isFallback = true;
+                let link = `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(placeName)}`;
+                let sourceBadge = `<span class="flex items-center gap-1.5"><i class="fa-brands fa-wikipedia-w"></i> Verified Wiki Info</span>`;
+
+                try {
+                    const wikiTitleUrl = await getWikiArticleUrl(placeName);
+                    const cleanWikiTitle = decodeURIComponent(wikiTitleUrl.split("/wiki/")[1] || "").replace(/_/g, " ");
+                    const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanWikiTitle || placeName)}`);
+                    if (wikiRes.ok) {
+                        const wikiData = await wikiRes.json();
+                        if (wikiData.title) title = wikiData.title;
+                        if (wikiData.extract && !wikiData.extract.includes("may refer to")) desc = wikiData.extract;
+                        link = wikiTitleUrl;
+                        
+                        if (wikiData.thumbnail && wikiData.thumbnail.source) {
+                            imgSrc = wikiData.thumbnail.source; // High accuracy Wikipedia image
+                            isFallback = false;
+                        } else {
+                            // Wiki active but no image? Fetch from Unsplash secure proxy!
+                            const unsplashRes = await fetch(`/api/trips/image/unsplash?query=${encodeURIComponent(placeName + " " + destinationStr)}`);
+                            const unsplashData = await unsplashRes.json();
+                            if (unsplashData.success && unsplashData.url) {
+                                imgSrc = unsplashData.url;
+                                isFallback = false;
+                                sourceBadge = `<span class="flex items-center gap-1.5"><i class="fa-solid fa-camera"></i> Unsplash Imagery</span>`;
+                            }
+                        }
+                    } else {
+                        throw new Error("Wikipedia API 404");
+                    }
+                } catch(wikiErr) {
+                    console.log("Wikipedia failed, relying entirely on Unsplash...");
+                    const wikiTitleUrl = await getWikiArticleUrl(placeName);
+                    link = wikiTitleUrl;
+                    // Wikipedia totally failed (maybe niche cafe/restaurant). Use Unsplash + Default Desc.
+                    const unsplashRes = await fetch(`/api/trips/image/unsplash?query=${encodeURIComponent(placeName + " " + destinationStr)}`);
+                    const unsplashData = await unsplashRes.json();
+                    if (unsplashData.success && unsplashData.url) {
+                        imgSrc = unsplashData.url;
+                        isFallback = false;
+                        sourceBadge = `<span class="flex items-center gap-1.5 text-slate-500"><i class="fa-solid fa-camera"></i> Local Capture via Unsplash</span>`;
+                    }
+                }
+                
+                showPopupDetails(title, desc, imgSrc, link, sourceBadge, isFallback);
+
+                // Find the corresponding marker and show MapCN-style custom popup
+                let targetMarker = null;
+                routeLayerGroup.eachLayer(layer => {
+                    if (layer instanceof L.Marker && layer.placeName && layer.placeName.toLowerCase() === placeName.toLowerCase()) {
+                        targetMarker = layer;
+                    }
+                });
+
+                if (targetMarker) {
+                    let weatherInfoHtml = '';
+                    try {
+                        const weatherRes = await fetch(`/api/weather?lat=${lat}&lon=${lon}&destination=${encodeURIComponent(placeName)}`);
+                        if (weatherRes.ok) {
+                            const weatherData = await weatherRes.json();
+                            if (weatherData.current) {
+                                weatherInfoHtml = `
+                                    <div class="mt-2 flex items-center justify-between text-[10px] font-semibold border-t border-slate-100 dark:border-white/5 pt-2">
+                                        <span class="text-slate-400">Current Weather:</span>
+                                        <span class="flex items-center gap-1 text-slate-700 dark:text-slate-300">
+                                            <span>${weatherData.current.icon || '🌤️'}</span>
+                                            <span>${weatherData.current.temp}°C</span>
+                                            <span class="text-[9px] text-slate-400">(${weatherData.current.label})</span>
+                                        </span>
+                                    </div>
+                                `;
+                            }
+                        }
+                    } catch(weatherErr) {
+                        console.warn("Could not get weather for marker popup:", weatherErr);
+                    }
+
+                    const popupContent = `
+                        <div class="p-3 text-slate-800 dark:text-white font-medium" style="min-width:240px; max-width:260px; font-family:'Plus Jakarta Sans', sans-serif;">
+                            <div class="w-full h-24 bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden relative mb-2.5">
+                                <img src="${imgSrc}" class="w-full h-full object-cover" onerror="this.style.display='none';">
+                            </div>
+                            <span class="inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-sky-500/10 text-sky-500 mb-1">
+                                Day ${targetMarker.dayNum || '•'} Stop #${targetMarker.stopIndex || '1'}
+                            </span>
+                            <h4 class="font-black text-xs mb-1 line-clamp-2">${title}</h4>
+                            <p class="text-[9px] text-slate-500 dark:text-slate-400 leading-tight line-clamp-3 mb-2">${desc}</p>
+                            ${weatherInfoHtml}
+                            <div class="flex items-center justify-between gap-3 pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
+                                <a target="_blank" href="${link}" class="text-sky-500 hover:text-sky-400 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">Explore Wiki <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                            </div>
+                        </div>
+                    `;
+                    targetMarker.bindPopup(popupContent, {
+                        className: 'leaflet-custom-popup-modern',
+                        offset: [0, -32]
+                    }).openPopup();
+                }
+
+            } catch(e) {
+                console.error("Map query pipeline failed universally", e);
+                const searchLink = `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(placeName)}`;
+                showPopupDetails(placeName, "A beautiful spot scheduled on your itinerary.", fallbackScenery, searchLink, `<i class="fa-solid fa-eye-slash"></i> Image Unavailable`, true);
+                
+                let targetMarker = null;
+                routeLayerGroup.eachLayer(layer => {
+                    if (layer instanceof L.Marker && layer.placeName && layer.placeName.toLowerCase() === placeName.toLowerCase()) {
+                        targetMarker = layer;
+                    }
+                });
+                if (targetMarker) {
+                    const popupContent = `
+                        <div class="p-3 text-slate-800 dark:text-white font-medium" style="min-width:200px; font-family:'Plus Jakarta Sans', sans-serif;">
+                            <span class="inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-sky-500/10 text-sky-500 mb-1">
+                                Day ${targetMarker.dayNum || '•'} Stop #${targetMarker.stopIndex || '1'}
+                            </span>
+                            <h4 class="font-black text-xs mb-1">${placeName}</h4>
+                            <p class="text-[9px] text-slate-500 dark:text-slate-400 leading-tight mb-2">Scheduled stop on your itinerary.</p>
+                            <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <a target="_blank" href="${searchLink}" class="text-sky-500 hover:text-sky-400 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">Explore Wiki <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                            </div>
+                        </div>
+                    `;
+                    targetMarker.bindPopup(popupContent, {
+                        className: 'leaflet-custom-popup-modern',
+                        offset: [0, -32]
+                    }).openPopup();
+                }
+            }
+        }
+
+        function showPopupLoading(placeName) {
+            const popup = document.getElementById('placePopup');
+            document.getElementById('popupTitle').innerText = placeName;
+            document.getElementById('popupDesc').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-sky-500 mr-2 text-lg"></i> Locating on map and fetching intelligent records...';
+            document.getElementById('popupImg').src = 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&q=80&w=800';
+            
+            popup.classList.remove('translate-y-[150%]', 'opacity-0');
+            popup.classList.add('translate-y-0', 'opacity-100');
+        }
+
+        function showPopupDetails(title, desc, imgSrc, link, badgeHtml, isFallback = false) {
+            document.getElementById('popupTitle').innerText = title;
+            document.getElementById('popupDesc').innerText = desc;
+            document.getElementById('popupImg').src = imgSrc;
+            document.getElementById('wikiLink').href = link;
+            if(badgeHtml) document.getElementById('popupSourceBadge').innerHTML = badgeHtml;
+            
+            const fallbackOverlay = document.getElementById('imageFallbackText');
+            if (isFallback) {
+                fallbackOverlay.classList.remove('opacity-0');
+                fallbackOverlay.classList.add('opacity-100');
+            } else {
+                fallbackOverlay.classList.add('opacity-0');
+                fallbackOverlay.classList.remove('opacity-100');
+            }
+        }
+
+        function closePopup() {
+            const popup = document.getElementById('placePopup');
+            popup.classList.remove('translate-y-0', 'opacity-100');
+            popup.classList.add('translate-y-[150%]', 'opacity-0');
+            
+            document.querySelectorAll('.blue-tick').forEach(el => {
+                el.classList.remove('ring-2', 'ring-sky-500', 'bg-sky-500', 'text-white');
+            });
+        }
+
+        // Global variables for OSRM routing and destination bias
+        let destinationCoords = null;
+        let roadRouteMetrics = {};
+        let activePlotToken = 0;
+        let dayCoordinatesMap = {};
+        let dayPolylinesMap = {};
+        let dayMarkersMap = {};
+
+        const EXCLUDED_PLACE_KEYWORDS = [
+            'morning', 'afternoon', 'evening', 'lunch', 'dinner', 'night', 
+            'day', 'hotel check-in', 'hotel check-out', 'check-in', 'check-out',
+            'local guide', 'sightseeing', 'relax', 'activity', 'activities',
+            'morning:', 'afternoon:', 'evening:', 'lunch:', 'dinner:',
+            'breakfast', 'breakfast:', 'brunch', 'brunch:'
+        ];
+
+        function extractCleanPlaces(activityText) {
+            if (!activityText) return [];
+            const matches = [...activityText.matchAll(/\*\*(.*?)\*\*/g)].map(m => m[1]);
+            return [...new Set(matches)]
+                .map(p => p.trim())
+                .filter(p => {
+                    const pl = p.toLowerCase();
+                    return pl.length >= 3 && 
+                           !EXCLUDED_PLACE_KEYWORDS.includes(pl) && 
+                           !EXCLUDED_PLACE_KEYWORDS.some(kw => pl === kw || pl === kw + ':');
+                });
+        }
+
+        async function getWikiArticleUrl(placeName) {
+            const directMap = {
+                "taj mahal": "Taj_Mahal",
+                "amer fort": "Amer_Fort",
+                "hawa mahal": "Hawa_Mahal",
+                "lake pichola": "Lake_Pichola",
+                "cellular jail": "Cellular_Jail",
+                "radhanagar beach": "Radhanagar_Beach",
+                "jaisalmer fort": "Jaisalmer_Fort",
+                "living root bridge": "Living_root_bridge",
+                "double decker living root bridge": "Living_root_bridge",
+                "dawki": "Umngot_River",
+                "dawki river": "Umngot_River",
+                "nohkalikai falls": "Nohkalikai_Falls",
+                "shillong": "Shillong",
+                "cherrapunji": "Cherrapunji",
+                "sam sand dunes": "Sam_Sand_Dunes",
+                "gadisar lake": "Gadisar_Lake",
+                "munnar": "Munnar",
+                "alleppey": "Alappuzha",
+                "backwaters": "Kerala_backwaters",
+                "varkala cliff": "Varkala_Beach",
+                "varkala beach": "Varkala_Beach",
+                "chokhi dhani": "Chokhi_Dhani",
+                "basilica of bom jesus": "Basilica_of_Bom_Jesus",
+                "chapora fort": "Chapora_Fort",
+                "aguada fort": "Fort_Aguada",
+                "dudhsagar falls": "Dudhsagar_Falls"
+            };
+            const norm = placeName.toLowerCase().trim();
+            if (directMap[norm]) {
+                return `https://en.wikipedia.org/wiki/${directMap[norm]}`;
+            }
+            try {
+                const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(placeName)}&format=json&origin=*`);
+                if (searchRes.ok) {
+                    const data = await searchRes.json();
+                    if (data.query && data.query.search && data.query.search.length > 0) {
+                        return `https://en.wikipedia.org/wiki/${encodeURIComponent(data.query.search[0].title.replace(/\s+/g, '_'))}`;
+                    }
+                }
+            } catch (_) {}
+            return `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(placeName)}`;
+        }
+
+        async function getRoadRoute(lat1, lon1, lat2, lon2) {
+            try {
+                const response = await fetch(`/api/ors-route?start=${lat1},${lon1}&end=${lat2},${lon2}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.coords && data.coords.length > 0) {
+                        return {
+                            coords: data.coords,
+                            distance: data.distance_km,
+                            duration: data.duration_min,
+                            steps: data.steps || [],
+                            source: data.source
+                        };
+                    }
+                }
+            } catch (e) {
+                console.warn("Routing request via proxy failed:", e);
+            }
+            return null;
+        }
+
+        // ─── Initial Page Load Controller ─────────────────────────────────
+        let routeLayerGroup = L.featureGroup();
+
+        // Per-day color palette — each day gets a distinct route color
+        const DAY_COLORS = ['#0ea5e9','#6366f1','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316'];
+
+        // 4-Tier geocoding helper with distance validation to avoid mapping anomalies
+        async function geocodePlace(placeName, destinationStr) {
+            const queries = [
+                `${placeName}, ${destinationStr}, India`,
+                `${placeName}, ${destinationStr}`,
+                `${placeName}, India`,
+                placeName
+            ];
+            for (const q of queries) {
+                try {
+                    const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        const lat = parseFloat(data[0].lat);
+                        const lon = parseFloat(data[0].lon);
+                        if (!isNaN(lat) && !isNaN(lon) && isFinite(lat) && isFinite(lon)) {
+                            // Skip default fallback location unless destination or query is actually Delhi
+                            const isDefaultLocation = (Math.abs(lat - 28.6139) < 0.0001 && Math.abs(lon - 77.2090) < 0.0001) ||
+                                                      (data[0].display_name && data[0].display_name.includes('(Default Location)'));
+                            if (isDefaultLocation) {
+                                const destLower = (destinationStr || '').toLowerCase();
+                                const placeLower = (placeName || '').toLowerCase();
+                                if (!destLower.includes('delhi') && !placeLower.includes('delhi')) {
+                                    console.log(`[Geocode Frontend Bypass] Detected default fallback for "${placeName}" when traveling to "${destinationStr}" — skipping.`);
+                                    continue;
+                                }
+                            }
+
+                            // Distance filter check: reject if >250km from destination to avoid mapping errors
+                            if (destinationCoords) {
+                                const dist = haversine(lat, lon, destinationCoords.lat, destinationCoords.lon);
+                                if (dist > 250) {
+                                    console.warn(`Geocoding match for "${placeName}" is too far (${dist.toFixed(1)} km) — trying next fallback.`);
+                                    continue;
+                                }
+                            } else {
+                                // First successful geocoding sets the general destination center if loadApp fails
+                                destinationCoords = { lat, lon };
+                            }
+                            return { lat, lon };
+                        }
+                    }
+                } catch (e) { /* continue to next tier */ }
+            }
+            return null;
+        }
+
+        // Build a numbered, color-coded map marker
+        function buildMarkerIcon(color, num, isFallback = false, placeName = "") {
+            const borderStyle = isFallback ? `border: 2.5px dashed #f59e0b;` : `border: 2.5px solid white;`;
+            const shadowStyle = isFallback ? `box-shadow: 0 0 12px #f59e0b, 0 3px 8px rgba(0,0,0,0.3);` : `box-shadow: 0 0 10px ${color}88, 0 3px 8px rgba(0,0,0,0.3);`;
+            
+            // Check if place is food-related (special local food markers)
+            const isFood = placeName && /\b(restaurant|cafe|bhandar|dhabas|food|dhaba|kitchen|bakery|lassi|dining|sweets|parantha|karim|britto|kulcha|chokhi|cuisine|bar|pub|bistro|grill|eats|dhaba|kalan|halais|parotta|biryani|tea|cardamom|lobby|lounge|gadoh|dohneiiong|pukhlein|lobster|shikara|seafood)\b/i.test(placeName);
+            
+            let badgeHtml = '';
+            if (isFood) {
+                badgeHtml = `<i class="fa-solid fa-utensils text-[6px] absolute -top-1.5 -left-1.5 text-amber-500 bg-white dark:bg-slate-900 p-0.5 rounded-full shadow-md border border-slate-200 dark:border-white/10 animate-bounce"></i>`;
+            }
+            
+            const innerHtml = isFallback 
+                ? `${badgeHtml}<i class="fa-solid fa-sparkles text-[8px] absolute -top-1.5 -right-1.5 text-amber-400 animate-pulse"></i>${num}` 
+                : `${badgeHtml}${num}`;
+            
+            return L.divIcon({
+                html: `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;position:relative;" class="hover:scale-125 transition-transform origin-bottom">
+                    <div style="width:28px;height:28px;background:${color};${borderStyle}${shadowStyle}border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:white;font-family:sans-serif;position:relative;">${innerHtml}</div>
+                    <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid ${color};margin-top:-1px;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.2));"></div>
+                </div>`,
+                className: 'bg-transparent overflow-visible',
+                iconSize: [28, 38],
+                iconAnchor: [14, 38]
+            });
+        }
+
+        function addRouteArrows(coords, color, dayNum) {
+            if (!coords || coords.length < 2) return;
+            if (!dayPolylinesMap[dayNum]) {
+                dayPolylinesMap[dayNum] = [];
+            }
+            
+            // Place arrows at equal intervals along the coordinates
+            const numArrows = Math.max(1, Math.min(3, Math.floor(coords.length / 10)));
+            for (let i = 1; i <= numArrows; i++) {
+                const idx = Math.floor((coords.length - 1) * (i / (numArrows + 1)));
+                if (idx >= coords.length - 1) continue;
+                
+                const p1 = coords[idx];
+                const p2 = coords[idx + 1];
+                
+                // Calculate bearing/angle from p1 to p2
+                const angle = 90 - (Math.atan2(p2[0] - p1[0], p2[1] - p1[1]) * 180 / Math.PI);
+                
+                // Create custom SVG arrow icon
+                const arrowIcon = L.divIcon({
+                    className: 'route-arrow-icon',
+                    html: `<div style="transform: rotate(${angle}deg); color: ${color}; font-size: 10px; text-shadow: 0 0 2px #fff;"><i class="fa-solid fa-chevron-up"></i></div>`,
+                    iconSize: [10, 10],
+                    iconAnchor: [5, 5]
+                });
+                
+                const marker = L.marker(p1, { icon: arrowIcon, interactive: false });
+                routeLayerGroup.addLayer(marker);
+                dayPolylinesMap[dayNum].push(marker);
+            }
+        }
+
+        // ─── Primary Map Plotter: Schedule Array Based (Day-Wise Routes) ────
+        async function plotAllLocationsSequential(scheduleArr, destinationStr) {
+            if (!map || !routeLayerGroup) return;
+            if (!scheduleArr || scheduleArr.length === 0) return;
+
+            const myToken = ++activePlotToken;
+
+            // Pre-resolve destination center coordinates to ensure distance filtering is robust
+            if (!destinationCoords && destinationStr) {
+                try {
+                    const r = await fetch(`/api/geocode?q=${encodeURIComponent(destinationStr)}`);
+                    const d = await r.json();
+                    if (d && d.length > 0) {
+                        const lat = parseFloat(d[0].lat);
+                        const lon = parseFloat(d[0].lon);
+                        if (!isNaN(lat) && !isNaN(lon) && isFinite(lat) && isFinite(lon)) {
+                            destinationCoords = { lat, lon };
+                        }
+                    }
+                } catch(e) {
+                    console.warn("Failed to pre-resolve destination coordinates:", e);
+                }
+            }
+
+            routeLayerGroup.clearLayers();
+            routeLayerGroup.addTo(map);
+
+            // Clear map legend and coordinates map
+            dayCoordinatesMap = {};
+            dayPolylinesMap = {};
+            dayMarkersMap = {};
+            const legendEl = document.getElementById('mapLegend');
+            if (legendEl) legendEl.innerHTML = '';
+
+            const allCoordinates = [];
+            const legendItems = [];
+
+            for (let d = 0; d < scheduleArr.length; d++) {
+                if (myToken !== activePlotToken) return;
+
+                const day = scheduleArr[d];
+                const uniquePlaces = extractCleanPlaces(day.activity);
+                if (uniquePlaces.length === 0) continue;
+
+                const dayColor = DAY_COLORS[d % DAY_COLORS.length];
+                const dayCoords = [];
+
+                for (let i = 0; i < uniquePlaces.length; i++) {
+                    if (myToken !== activePlotToken) return;
+
+                    const placeName = uniquePlaces[i];
+                    let coords = null;
+                    let isFallbackGeo = false;
+                    try {
+                        coords = await geocodePlace(placeName, destinationStr);
+                    } catch(e) {
+                        console.warn(`Geocoding fetch error for: ${placeName}`, e);
+                    }
+
+                    if (!coords) {
+                        isFallbackGeo = true;
+                        const center = destinationCoords || { lat: 20.5937, lon: 78.9629 };
+                        let hash = 0;
+                        for (let charIdx = 0; charIdx < placeName.length; charIdx++) {
+                            hash = placeName.charCodeAt(charIdx) + ((hash << 5) - hash);
+                        }
+                        const latOffset = ((Math.abs(hash) % 100) / 1000 - 0.05);
+                        const lonOffset = ((Math.abs(hash >> 8) % 100) / 1000 - 0.05);
+                        coords = {
+                            lat: center.lat + latOffset,
+                            lon: center.lon + lonOffset,
+                            isFallback: true
+                        };
+                    }
+
+                    try {
+                        geocodedPlaces[placeName] = coords;
+                        dayCoords.push([coords.lat, coords.lon]);
+                        allCoordinates.push([coords.lat, coords.lon]);
+
+                        // Numbered marker — number shows sequence within the day
+                        const icon = buildMarkerIcon(dayColor, i + 1, isFallbackGeo, placeName);
+                        const marker = L.marker([coords.lat, coords.lon], { icon });
+                        marker.placeName = placeName;
+                        marker.dayNum = day.day;
+                        marker.stopIndex = i + 1;
+                        marker.on('click', () => handleLocationClick(null, placeName));
+                        
+                        // Tooltip showing place name
+                        const tooltipContent = isFallbackGeo 
+                            ? `<b>Day ${day.day} #${i+1}</b><br>${placeName}<br><span class="text-amber-500 font-bold flex items-center gap-1 mt-0.5"><i class="fa-solid fa-sparkles animate-pulse"></i> AI Estimated Location</span>`
+                            : `<b>Day ${day.day} #${i+1}</b><br>${placeName}`;
+
+                        marker.bindTooltip(tooltipContent, {
+                            permanent: false, direction: 'top', offset: [0, -38],
+                            className: 'leaflet-custom-tooltip'
+                        });
+                        routeLayerGroup.addLayer(marker);
+                        if (!dayMarkersMap[day.day]) dayMarkersMap[day.day] = [];
+                        dayMarkersMap[day.day].push(marker);
+                    } catch(e) {
+                        console.warn(`Plot error for: ${placeName}`, e);
+                    }
+                    let geocodeDelay = 1050; // Default: Nominatim 1 req/sec rate limit compliance
+                    try {
+                        const testRes = await fetch(`/api/geocode?q=${encodeURIComponent(placeName + ' ' + destinationStr)}&check=1`);
+                        if (testRes.headers.get('X-Cache') === 'HIT') geocodeDelay = 50;
+                    } catch (_) {}
+                    await new Promise(r => setTimeout(r, geocodeDelay));
+
+                }
+
+                if (myToken !== activePlotToken) return;
+
+                // Draw day-specific road polyline segment-by-segment with OSRM/ORS
+                if (dayCoords.length >= 2) {
+                    for (let i = 0; i < dayCoords.length - 1; i++) {
+                        if (myToken !== activePlotToken) return;
+
+                        const start = dayCoords[i];
+                        const end = dayCoords[i+1];
+                        const p1 = uniquePlaces[i];
+                        const p2 = uniquePlaces[i+1];
+                        const c1 = geocodedPlaces[p1];
+                        const c2 = geocodedPlaces[p2];
+                        const isFallbackRoute = (c1 && c1.isFallback) || (c2 && c2.isFallback);
+                        
+                        try {
+                            let route = null;
+                            if (!isFallbackRoute) {
+                                route = await getRoadRoute(start[0], start[1], end[0], end[1]);
+                            }
+                            
+                            if (route && route.coords && route.coords.length > 0) {
+                                // Outer glow line (thick, semi-transparent) with animation
+                                const glowPoly = L.polyline(route.coords, {
+                                    color: dayColor,
+                                    weight: 10,
+                                    opacity: 0.18,
+                                    lineJoin: 'round',
+                                    lineCap: 'round',
+                                    className: 'neon-glow'
+                                });
+                                // Inner route line
+                                const roadPolyline = L.polyline(route.coords, {
+                                    color: dayColor,
+                                    weight: 5,
+                                    opacity: 0.92,
+                                    lineJoin: 'round',
+                                    lineCap: 'round'
+                                });
+                                routeLayerGroup.addLayer(glowPoly);
+                                routeLayerGroup.addLayer(roadPolyline);
+                                
+                                if (!dayPolylinesMap[day.day]) dayPolylinesMap[day.day] = [];
+                                dayPolylinesMap[day.day].push(glowPoly);
+                                dayPolylinesMap[day.day].push(roadPolyline);
+
+                                // Add animated directional arrows
+                                addRouteArrows(route.coords, dayColor, day.day);
+
+                                // Add midpoint distance label marker
+                                if (route.coords.length >= 2) {
+                                    const midIdx = Math.floor(route.coords.length / 2);
+                                    const midPt = route.coords[midIdx];
+                                    const distKm = route.distance ? route.distance : haversine(start[0], start[1], end[0], end[1]);
+                                    const distLabel = L.divIcon({
+                                        className: '',
+                                        html: `<div style="background:${dayColor};color:#fff;font-size:8px;font-weight:900;padding:2px 5px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4);border:1.5px solid rgba(255,255,255,0.3);letter-spacing:0.03em;">${distKm.toFixed(1)} km</div>`,
+                                        iconAnchor: [20, 10]
+                                    });
+                                    const distMarker = L.marker(midPt, { icon: distLabel, interactive: false, zIndexOffset: -100 });
+                                    routeLayerGroup.addLayer(distMarker);
+                                    dayPolylinesMap[day.day].push(distMarker);
+                                }
+
+                                // Cache actual road metrics for transit analyzer
+                                const routeKey = `${p1}_to_${p2}`;
+                                roadRouteMetrics[routeKey] = {
+                                    distance: route.distance,
+                                    duration: route.duration,
+                                    steps: route.steps || [],
+                                    source: route.source || 'osrm'
+                                };
+                            } else {
+                                // Fallback to straight dashed line with arrow
+                                const straightPoly = L.polyline([start, end], {
+                                    color: dayColor,
+                                    weight: 3.5,
+                                    opacity: 0.7,
+                                    dashArray: '8, 8',
+                                    lineJoin: 'round'
+                                });
+                                routeLayerGroup.addLayer(straightPoly);
+                                if (!dayPolylinesMap[day.day]) dayPolylinesMap[day.day] = [];
+                                dayPolylinesMap[day.day].push(straightPoly);
+
+                                // Add arrow at midpoint of straight line
+                                const midPt = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
+                                const angle = 90 - (Math.atan2(end[0] - start[0], end[1] - start[1]) * 180 / Math.PI);
+                                const arrowIcon = L.divIcon({
+                                    className: 'route-arrow-icon',
+                                    html: `<div style="transform: rotate(${angle}deg); color: ${dayColor}; font-size: 10px; text-shadow: 0 0 2px #fff;"><i class="fa-solid fa-chevron-up"></i></div>`,
+                                    iconSize: [10, 10],
+                                    iconAnchor: [5, 5]
+                                });
+                                const marker = L.marker(midPt, { icon: arrowIcon, interactive: false });
+                                routeLayerGroup.addLayer(marker);
+                                dayPolylinesMap[day.day].push(marker);
+
+                                // Midpoint distance label
+                                const distKm = haversine(start[0], start[1], end[0], end[1]);
+                                const distLabel = L.divIcon({
+                                    className: '',
+                                    html: `<div style="background:${dayColor};color:#fff;font-size:8px;font-weight:900;padding:2px 5px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4);border:1.5px solid rgba(255,255,255,0.3);letter-spacing:0.03em;">${distKm.toFixed(1)} km</div>`,
+                                    iconAnchor: [20, 10]
+                                });
+                                const distMarker = L.marker(midPt, { icon: distLabel, interactive: false, zIndexOffset: -100 });
+                                routeLayerGroup.addLayer(distMarker);
+                                dayPolylinesMap[day.day].push(distMarker);
+
+                                // Cache metrics
+                                const routeKey = `${p1}_to_${p2}`;
+                                roadRouteMetrics[routeKey] = {
+                                    distance: distKm,
+                                    duration: (distKm / 50) * 3600, // duration in seconds (assume 50 km/h)
+                                    steps: [],
+                                    source: 'fallback'
+                                };
+                            }
+                        } catch(e) {
+                            console.warn("Routing segment error, using straight fallback:", e);
+                            const straightPoly = L.polyline([start, end], {
+                                color: dayColor,
+                                weight: 3.5,
+                                opacity: 0.7,
+                                dashArray: '8, 8',
+                                lineJoin: 'round'
+                            });
+                            routeLayerGroup.addLayer(straightPoly);
+                            if (!dayPolylinesMap[day.day]) dayPolylinesMap[day.day] = [];
+                            dayPolylinesMap[day.day].push(straightPoly);
+
+                            // Add arrow at midpoint of straight line
+                            const midPt = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
+                            const angle = 90 - (Math.atan2(end[0] - start[0], end[1] - start[1]) * 180 / Math.PI);
+                            const arrowIcon = L.divIcon({
+                                className: 'route-arrow-icon',
+                                html: `<div style="transform: rotate(${angle}deg); color: ${dayColor}; font-size: 10px; text-shadow: 0 0 2px #fff;"><i class="fa-solid fa-chevron-up"></i></div>`,
+                                iconSize: [10, 10],
+                                iconAnchor: [5, 5]
+                            });
+                            const marker = L.marker(midPt, { icon: arrowIcon, interactive: false });
+                            routeLayerGroup.addLayer(marker);
+                            dayPolylinesMap[day.day].push(marker);
+
+                            // Midpoint distance label
+                            const distKm = haversine(start[0], start[1], end[0], end[1]);
+                            const distLabel = L.divIcon({
+                                className: '',
+                                html: `<div style="background:${dayColor};color:#fff;font-size:8px;font-weight:900;padding:2px 5px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4);border:1.5px solid rgba(255,255,255,0.3);letter-spacing:0.03em;">${distKm.toFixed(1)} km</div>`,
+                                iconAnchor: [20, 10]
+                            });
+                            const distMarker = L.marker(midPt, { icon: distLabel, interactive: false, zIndexOffset: -100 });
+                            routeLayerGroup.addLayer(distMarker);
+                            dayPolylinesMap[day.day].push(distMarker);
+
+                            // Cache metrics
+                            const routeKey = `${p1}_to_${p2}`;
+                            roadRouteMetrics[routeKey] = {
+                                distance: distKm,
+                                duration: (distKm / 50) * 3600, // duration in seconds (assume 50 km/h)
+                                steps: [],
+                                source: 'fallback'
+                            };
+                        }
+                        // Small throttle spacing to play nice with routing api
+                        await new Promise(r => setTimeout(r, 80));
+                    }
+                }
+
+                // Save day coordinates and legend data
+                dayCoordinatesMap[day.day] = dayCoords;
+                legendItems.push({
+                    day: day.day,
+                    color: dayColor
+                });
+
+                // Render transit updates incrementally for real-time responsiveness
+                recalculateTransitRoutes();
+            }
+
+            if (myToken !== activePlotToken) return;
+
+            // Render legend at the end
+            if (legendEl) {
+                legendEl.innerHTML = '';
+                const seenDays = new Set();
+                legendItems.forEach(item => {
+                    if (seenDays.has(item.day)) return;
+                    seenDays.add(item.day);
+                    
+                    const div = document.createElement('div');
+                    div.className = "legend-capsule flex items-center gap-1.5 text-[9px] font-bold text-slate-700 dark:text-slate-300 bg-white/40 dark:bg-slate-800/40 px-2.5 py-0.5 rounded-full border border-slate-200/50 dark:border-white/5 shadow-sm hover:scale-105 hover:border-sky-500/50 dark:hover:border-sky-500/50 transition-all duration-200 pointer-events-auto select-none";
+                    div.setAttribute('data-day', item.day);
+                    div.style.cssText = `display:flex;align-items:center;gap:5px;`;
+                    div.innerHTML = `
+                        <input type="checkbox" checked class="day-route-checkbox w-2.5 h-2.5 rounded border-slate-300 text-sky-500 focus:ring-sky-500 pointer-events-auto cursor-pointer" onclick="event.stopPropagation(); handleCheckboxToggle(${item.day}, this.checked)">
+                        <span onclick="highlightDayRoute(${item.day})" class="flex items-center gap-1 cursor-pointer pointer-events-auto">
+                            <span style="display:inline-block;width:10px;height:3px;background:${item.color};border-radius:1px;"></span>
+                            Day ${item.day}
+                        </span>
+                    `;
+                    legendEl.appendChild(div);
+                });
+            }
+
+            // Fit map to all markers
+            if (allCoordinates.length > 0) {
+                try {
+                    map.flyToBounds(L.latLngBounds(allCoordinates), { padding: [50, 50], duration: 2, maxZoom: 14 });
+                } catch(e) {}
+            }
+
+            recalculateTransitRoutes();
+        }
+
+        async function plotNewLocations(text, destinationStr) {
+            if (!map || !routeLayerGroup) return;
+            const uniquePlaces = extractCleanPlaces(text);
+            
+            if (uniquePlaces.length === 0) return;
+
+            // Pre-resolve destination center coordinates
+            if (!destinationCoords && destinationStr) {
+                try {
+                    const r = await fetch(`/api/geocode?q=${encodeURIComponent(destinationStr)}`);
+                    const d = await r.json();
+                    if (d && d.length > 0) {
+                        const lat = parseFloat(d[0].lat);
+                        const lon = parseFloat(d[0].lon);
+                        if (!isNaN(lat) && !isNaN(lon) && isFinite(lat) && isFinite(lon)) {
+                            destinationCoords = { lat, lon };
+                        }
+                    }
+                } catch(e) {}
+            }
+            
+            let addedCount = 0;
+            for(let i=0; i<uniquePlaces.length; i++) {
+                const placeName = uniquePlaces[i];
+                try {
+                    let coords = await geocodePlace(placeName, destinationStr);
+                    let isFallbackGeo = false;
+                    
+                    if (!coords) {
+                        isFallbackGeo = true;
+                        if (destinationCoords) {
+                            let hash = 0;
+                            for (let charIdx = 0; charIdx < placeName.length; charIdx++) {
+                                hash = placeName.charCodeAt(charIdx) + ((hash << 5) - hash);
+                            }
+                            const latOffset = ((Math.abs(hash) % 100) / 1000 - 0.05);
+                            const lonOffset = ((Math.abs(hash >> 8) % 100) / 1000 - 0.05);
+                            coords = {
+                                lat: destinationCoords.lat + latOffset,
+                                lon: destinationCoords.lon + lonOffset,
+                                isFallback: true
+                            };
+                        } else {
+                            coords = { lat: 20.5937, lon: 78.9629, isFallback: true };
+                        }
+                    }
+                    
+                    geocodedPlaces[placeName] = coords;
+                    
+                    // Check if marker already exists to avoid duplicates (coordinate-level check)
+                    let exists = false;
+                    routeLayerGroup.eachLayer(layer => {
+                        if (layer instanceof L.Marker) {
+                            const latLng = layer.getLatLng();
+                            if (Math.abs(latLng.lat - coords.lat) < 0.0001 && Math.abs(latLng.lng - coords.lon) < 0.0001) {
+                                exists = true;
+                            }
+                        }
+                    });
+                    
+                    if (!exists) {
+                        const icon = buildMarkerIcon('#0ea5e9', i + 1, isFallbackGeo, placeName);
+                        const marker = L.marker([coords.lat, coords.lon], { icon });
+                        marker.placeName = placeName;
+                        marker.dayNum = 0; // Temporary / newly suggested spot
+                        marker.stopIndex = i + 1;
+                        marker.on('click', () => handleLocationClick(null, placeName));
+                        
+                        const tooltipContent = isFallbackGeo
+                            ? `<b>${placeName}</b><br><span class="text-amber-400 font-bold flex items-center gap-1 mt-0.5"><i class="fa-solid fa-sparkles animate-pulse"></i> AI Estimated Location</span>`
+                            : placeName;
+                            
+                        marker.bindTooltip(tooltipContent, { permanent: false, direction: 'top', offset: [0, -38], className: 'leaflet-custom-tooltip' });
+                        routeLayerGroup.addLayer(marker);
+                        addedCount++;
+                    }
+                } catch(e) {
+                    console.log(`Failed to silently plot: ${placeName}`);
+                    geocodedPlaces[placeName] = null;
+                }
+                // Rate limit spacing (adaptive bypass if cached)
+                let geocodeDelay = 1050;
+                try {
+                    const testRes = await fetch(`/api/geocode?q=${encodeURIComponent(placeName + ' ' + destinationStr)}&check=1`);
+                    if (testRes.headers.get('X-Cache') === 'HIT') geocodeDelay = 50;
+                } catch (_) {}
+                await new Promise(r => setTimeout(r, geocodeDelay));
+            }
+            
+            if (addedCount > 0) {
+                try {
+                    map.flyToBounds(routeLayerGroup.getBounds(), { padding: [50, 50], duration: 1.5, maxZoom: 14 });
+                } catch(e) {}
+            }
+            recalculateTransitRoutes();
+        }
+
+        // ─── Weather Analyzer Engine ──────────────────────────────────────
+        async function updateWeatherBanner(destination) {
+            const banner = document.getElementById('weatherAlertBanner');
+            const icon = document.getElementById('weatherIcon');
+            const text = document.getElementById('weatherText');
+            if (!banner || !icon || !text) return;
+            
+            // Set loading state
+            icon.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-sky-500 text-[11px]"></i>`;
+            text.innerHTML = `Retrieving real-time weather updates for <strong>${destination}</strong>...`;
+            
+            const destLower = (destination || '').toLowerCase();
+            // Start with static fallback data
+            let weatherData = {
+                temp: "26°C",
+                desc: "Tropical Climate",
+                iconClass: "fa-solid fa-cloud-sun text-slate-400",
+                alert: "Perfect weather for exploring the area!"
+            };
+
+            // Static fallback mapping
+            if (destLower.includes('goa')) {
+                weatherData = { temp: "31°C", desc: "Sunny Shore Breeze", iconClass: "fa-solid fa-umbrella-beach text-orange-400", alert: "Humid & hot. Keep hydrated at the shacks!" };
+            } else if (destLower.includes('leh') || destLower.includes('ladakh')) {
+                weatherData = { temp: "14°C", desc: "Cold & Crystal Clear", iconClass: "fa-solid fa-snowflake text-sky-300", alert: "High UV indexes. Dress in heavy layers! Acclimatize first." };
+            } else if (destLower.includes('munnar') || destLower.includes('kerala') || destLower.includes('alleppey')) {
+                weatherData = { temp: "21°C", desc: "Light Monsoon Showers", iconClass: "fa-solid fa-cloud-showers-water text-sky-400", alert: "Rain expected. Tap to ask Ritu for indoor alternatives!" };
+            } else if (destLower.includes('udaipur') || destLower.includes('rajasthan') || destLower.includes('jaipur') || destLower.includes('jodhpur') || destLower.includes('jaisalmer')) {
+                weatherData = { temp: "34°C", desc: "Dry Desert Heat", iconClass: "fa-solid fa-temperature-high text-amber-500", alert: "Sunny. Best time for sightseeing is after 4 PM." };
+            } else if (destLower.includes('mumbai') || destLower.includes('bombay')) {
+                weatherData = { temp: "30°C", desc: "Overcast & High Humidity", iconClass: "fa-solid fa-cloud-sun text-slate-400", alert: "Great time to visit coastal spots like Marine Drive." };
+            } else if (destLower.includes('varanasi') || destLower.includes('banaras')) {
+                weatherData = { temp: "33°C", desc: "Hot & Hazy", iconClass: "fa-solid fa-fire-flame-curved text-orange-500", alert: "Best Ganga Aarti at 6:30pm. Sunrise boat ride recommended!" };
+            } else if (destLower.includes('manali') || destLower.includes('shimla') || destLower.includes('himachal')) {
+                weatherData = { temp: "12°C", desc: "Cool Mountain Breeze", iconClass: "fa-solid fa-mountain text-emerald-400", alert: "Pack warm layers. Roads to Rohtang may need a permit!" };
+            } else if (destLower.includes('agra') || destLower.includes('taj')) {
+                weatherData = { temp: "35°C", desc: "Sunny & Clear", iconClass: "fa-solid fa-sun text-yellow-400", alert: "Best Taj Mahal lighting at sunrise. Pre-book tickets online!" };
+            } else if (destLower.includes('andaman') || destLower.includes('havelock') || destLower.includes('neil')) {
+                weatherData = { temp: "28°C", desc: "Tropical Sea Breeze", iconClass: "fa-solid fa-water text-cyan-400", alert: "Perfect for diving & snorkeling. Book water sports in advance!" };
+            } else if (destLower.includes('delhi') || destLower.includes('new delhi')) {
+                weatherData = { temp: "38°C", desc: "Hot & Hazy — Peak Summer", iconClass: "fa-solid fa-smog text-orange-300", alert: "Carry sunscreen & water. Metro is your best friend!" };
+            } else if (destLower.includes('kolkata') || destLower.includes('calcutta')) {
+                weatherData = { temp: "32°C", desc: "Warm & Humid", iconClass: "fa-solid fa-cloud-sun-rain text-indigo-400", alert: "Try Kathi Rolls and visit Victoria Memorial early morning!" };
+            }
+
+            try {
+                // First geocode to get exact latitude/longitude
+                const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(destination)}`);
+                const geoData = await geoRes.json();
+                if (geoData && geoData.length > 0) {
+                    const lat = parseFloat(geoData[0].lat);
+                    const lon = parseFloat(geoData[0].lon);
+                    
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        // Trigger Destination Info Board Update (REST Countries & News API)
+                        updateDestinationBoard(destination, lat, lon);
+
+                        // Query backend proxy weather API
+                        const weatherUrl = `/api/weather?lat=${lat}&lon=${lon}&destination=${encodeURIComponent(destination)}`;
+                        const weatherRes = await fetch(weatherUrl);
+                        if (weatherRes.ok) {
+                            const data = await weatherRes.json();
+                            const curr = data.current;
+                            if (curr) {
+                                weatherData.temp = `${curr.temp}°C`;
+                                weatherData.desc = curr.label;
+                                
+                                const iconSymbol = curr.icon || '🌤️';
+                                weatherData.iconClass = ''; 
+                                weatherData.iconSymbol = iconSymbol;
+
+                                // Build detailed advisory text with humidity, feels-like, wind, visibility, sunrise/sunset
+                                let details = `Feels: ${curr.feels_like}°C | Humid: ${curr.humidity}% | Wind: ${curr.windSpeed}km/h`;
+                                if (curr.sunrise && curr.sunset) {
+                                    details += ` | 🌅 ${curr.sunrise} | 🌇 ${curr.sunset}`;
+                                }
+                                if (data.advisory) {
+                                    weatherData.alert = `⚠️ ${data.advisory} (${details})`;
+                                } else {
+                                    weatherData.alert = `${details}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch(e) {
+                console.error("Live weather lookup failed, showing best estimate static data:", e);
+            }
+            
+            if (weatherData.iconSymbol) {
+                icon.innerHTML = `<span class="text-sm shrink-0 mr-1">${weatherData.iconSymbol}</span>`;
+            } else {
+                icon.innerHTML = `<i class="${weatherData.iconClass} text-sm"></i>`;
+            }
+            text.innerHTML = `<strong>${destination}:</strong> ${weatherData.temp}, ${weatherData.desc} &bull; <span class="opacity-80">${weatherData.alert}</span>`;
+            banner.setAttribute('data-query', `What local advice or weather precautions do you recommend for ${destination} right now?`);
+        }
+
+        // Toggle Destination Info Board Panel collapse
+        let isDestInfoExpanded = true;
+        function toggleDestinationInfo() {
+            const expandable = document.getElementById('destinationInfoExpandable');
+            const chevron = document.getElementById('destInfoChevron');
+            if (!expandable || !chevron) return;
+            isDestInfoExpanded = !isDestInfoExpanded;
+            expandable.style.display = isDestInfoExpanded ? 'block' : 'none';
+            chevron.className = isDestInfoExpanded ? 'fa-solid fa-chevron-up text-[9px]' : 'fa-solid fa-chevron-down text-[9px]';
+        }
+
+        async function updateDestinationBoard(destination, lat, lon) {
+            // Retired: Destination Board has been removed from UI
+            return;
+        }
+
+
+        function askWeatherAdvice() {
+            const banner = document.getElementById('weatherAlertBanner');
+            if (banner) {
+                const query = banner.getAttribute('data-query');
+                if (query) {
+                    sendQuickAction(query);
+                }
+            }
+        }
+
+        // ─── Route & Transit Analyzer Engine ──────────────────────────────
+        let geocodedPlaces = {};
+        let isAnalyzerExpanded = window.innerWidth >= 768;
+
+        function toggleRouteAnalyzer() {
+            const expandable = document.getElementById('routeAnalyzerExpandable') || document.getElementById('routeAnalyzerContent');
+            const icon = document.getElementById('analyzerChevron');
+            if (!expandable || !icon) return;
+            
+            isAnalyzerExpanded = !isAnalyzerExpanded;
+            if (isAnalyzerExpanded) {
+                expandable.style.display = 'block';
+                icon.className = 'fa-solid fa-chevron-up text-[9px]';
+            } else {
+                expandable.style.display = 'none';
+                icon.className = 'fa-solid fa-chevron-down text-[9px]';
+            }
+        }
+
+        function toggleAnalyzerVisibility() {
+            const panel = document.getElementById('routeAnalyzerPanel');
+            const btn = document.getElementById('analyzerToggleBtn');
+            if (!panel) return;
+            
+            panel.classList.toggle('hidden');
+            if (panel.classList.contains('hidden')) {
+                btn.classList.remove('border-sky-500', 'text-sky-500');
+                btn.classList.add('border-slate-300', 'dark:border-white/10', 'text-slate-500', 'dark:text-slate-400');
+                showNotification("Route Transit Panel Hidden", "info");
+            } else {
+                btn.classList.add('border-sky-500', 'text-sky-500');
+                btn.classList.remove('border-slate-300', 'dark:border-white/10', 'text-slate-500', 'dark:text-slate-400');
+                showNotification("Route Transit Panel Visible", "success");
+            }
+        }
+
+        function switchMobileTab(tab) {
+            const chatPanel = document.getElementById('chatPanel');
+            const mapPanel = document.getElementById('mapPanel');
+            const tabBtnChat = document.getElementById('tabBtnChat');
+            const tabBtnMap = document.getElementById('tabBtnMap');
+            if (!chatPanel || !mapPanel || !tabBtnChat || !tabBtnMap) return;
+
+            if (tab === 'chat') {
+                chatPanel.classList.remove('hidden');
+                chatPanel.classList.add('flex');
+                mapPanel.classList.remove('flex');
+                mapPanel.classList.add('hidden');
+
+                tabBtnChat.className = "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider rounded-xl transition duration-300 bg-sky-500 text-white shadow-md shadow-sky-500/20";
+                tabBtnMap.className = "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider rounded-xl transition duration-300 text-slate-500 dark:text-slate-400";
+            } else {
+                chatPanel.classList.remove('flex');
+                chatPanel.classList.add('hidden');
+                mapPanel.classList.remove('hidden');
+                mapPanel.classList.add('flex');
+
+                tabBtnChat.className = "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider rounded-xl transition duration-300 text-slate-500 dark:text-slate-400";
+                tabBtnMap.className = "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider rounded-xl transition duration-300 bg-sky-500 text-white shadow-md shadow-sky-500/20";
+                
+                // Force leaflet to re-calculate container size when shown from hidden
+                if (map) {
+                    setTimeout(() => {
+                        map.invalidateSize();
+                    }, 100);
+                }
+            }
+        }
+
+        async function triggerRouteOptimization() {
+            if (!currentTripData || !currentTripData.itineraryData || !currentTripData.itineraryData.schedule) {
+                showNotification("No trip schedule loaded to optimize!", "error");
+                return;
+            }
+
+            let optimizedAny = false;
+            const schedule = currentTripData.itineraryData.schedule;
+
+            schedule.forEach(day => {
+                const dayPlaces = extractCleanPlaces(day.activity);
+
+                if (dayPlaces.length > 2) {
+                    // Nearest neighbor TSP solver
+                    let unvisited = [...dayPlaces];
+                    let current = unvisited.shift(); 
+                    let optimizedPath = [current];
+
+                    while (unvisited.length > 0) {
+                        let nearestIdx = -1;
+                        let minDist = Infinity;
+                        const cCurrent = geocodedPlaces[current];
+
+                        for (let i = 0; i < unvisited.length; i++) {
+                            const candidate = unvisited[i];
+                            const cCand = geocodedPlaces[candidate];
+                            if (cCurrent && cCand) {
+                                const dist = haversine(cCurrent.lat, cCurrent.lon, cCand.lat, cCand.lon);
+                                if (dist < minDist) {
+                                    minDist = dist;
+                                    nearestIdx = i;
+                                }
+                            } else {
+                                nearestIdx = 0;
+                                break;
+                            }
+                        }
+
+                        if (nearestIdx !== -1) {
+                            current = unvisited.splice(nearestIdx, 1)[0];
+                            optimizedPath.push(current);
+                        } else {
+                            optimizedPath.push(unvisited.shift());
+                        }
+                    }
+
+                    // Reorder bold elements inside activity text sequentially
+                    let lines = day.activity.split('\n');
+                    let newLines = [];
+                    let placeIndex = 0;
+                    
+                    for (let line of lines) {
+                        if (line.includes('**')) {
+                            if (placeIndex < optimizedPath.length) {
+                                const originalMatch = line.match(/\*\*(.*?)\*\*/);
+                                if (originalMatch) {
+                                    line = line.replace(originalMatch[0], `**${optimizedPath[placeIndex]}**`);
+                                    placeIndex++;
+                                }
+                            }
+                        }
+                        newLines.push(line);
+                    }
+                    day.activity = newLines.join('\n');
+                    optimizedAny = true;
+                }
+            });
+
+            if (optimizedAny) {
+                showNotification("AI Route Sequence Optimized Geographically!", "success");
+                recalculateTransitRoutes();
+                
+                if (routeLayerGroup) {
+                    routeLayerGroup.clearLayers();
+                }
+                
+                // Re-plot with the updated schedule array directly
+                plotAllLocationsSequential(currentTripData.itineraryData.schedule, currentTripData.destination);
+
+                if (tripId) {
+                    try {
+                        await fetch(`/api/trips/${tripId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ itineraryData: currentTripData.itineraryData })
+                        });
+                    } catch (e) {
+                        console.error("Failed to sync optimized route to MongoDB:", e);
+                    }
+                } else {
+                    sessionStorage.setItem('tempTrip', JSON.stringify(currentTripData));
+                }
+            } else {
+                showNotification("Locations are already optimized!", "info");
+            }
+        }
+
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function recalculateTransitRoutes() {
+            const panel = document.getElementById('routeAnalyzerPanel');
+            const content = document.getElementById('routeAnalyzerContent');
+            if (!panel || !content) return;
+            
+            if (!currentTripData || !currentTripData.itineraryData || !currentTripData.itineraryData.schedule) {
+                panel.classList.add('hidden');
+                const summaryCard = document.getElementById('routeSummaryCard');
+                if (summaryCard) summaryCard.classList.add('hidden');
+                return;
+            }
+
+            const schedule = currentTripData.itineraryData.schedule;
+            let stepsHtml = '';
+            let totalSteps = 0;
+            let totalDistSum = 0;
+            let totalDurationMins = 0;
+
+            // 1. Gather all places sequentially across all days
+            const allTripPlaces = [];
+            schedule.forEach(day => {
+                const dayPlaces = extractCleanPlaces(day.activity);
+                dayPlaces.forEach(place => {
+                    allTripPlaces.push({
+                        place: place,
+                        day: day.day
+                    });
+                });
+            });
+
+            // 2. Loop through all transitions
+            for (let i = 0; i < allTripPlaces.length - 1; i++) {
+                const item1 = allTripPlaces[i];
+                const item2 = allTripPlaces[i+1];
+                const p1 = item1.place;
+                const p2 = item2.place;
+                const d1 = item1.day;
+                const d2 = item2.day;
+
+                const c1 = geocodedPlaces[p1];
+                const c2 = geocodedPlaces[p2];
+
+                // Filter steps by highlightedDay and visibility
+                const isD1Visible = dayVisibilityMap[d1] !== false;
+                if (!isD1Visible) {
+                    continue;
+                }
+                if (highlightedDay !== null && d1 !== highlightedDay) {
+                    continue;
+                }
+
+                // Header for Day Transit or Inter-Day Transition
+                if (i === 0 || allTripPlaces[i-1].day !== d1) {
+                    stepsHtml += `<div class="font-bold text-[9px] uppercase tracking-wider text-slate-400 mb-1 border-b border-slate-200 dark:border-white/5 pb-1 mt-2">Day ${d1} Transit</div>`;
+                }
+                if (d1 !== d2) {
+                    stepsHtml += `<div class="font-bold text-[9px] uppercase tracking-wider text-amber-500 mb-1 border-b border-amber-500/20 pb-1 mt-2">Day ${d1} to Day ${d2} Transition</div>`;
+                }
+
+                if (c1 && c2) {
+                    const isFallbackRoute = c1.isFallback || c2.isFallback;
+                    const routeKey = `${p1}_to_${p2}`;
+                    const cached = roadRouteMetrics[routeKey];
+                    
+                    let distText = '';
+                    let driveTime = 0;
+                    let walkTime = '';
+                    let recommendedMode = '';
+                    let modeIcon = '';
+                    let modeColor = '';
+
+                    const roadD = cached ? cached.distance : haversine(c1.lat, c1.lon, c2.lat, c2.lon);
+                    
+                    if (cached) {
+                        distText = `${roadD.toFixed(1)} km`;
+                        driveTime = Math.round(cached.source === 'fallback' ? cached.duration / 60 : cached.duration);
+                        walkTime = roadD > 3 ? '—' : `${Math.round(roadD * 15)} min`;
+                    } else {
+                        distText = `~${roadD.toFixed(1)} km`;
+                        const estRoadKm = roadD * 1.3;
+                        driveTime = Math.round(estRoadKm * 2.5 + 3);
+                        walkTime = roadD > 3 ? '—' : `${Math.round(roadD * 15)} min`;
+                    }
+
+                    totalDistSum += roadD;
+                    totalDurationMins += driveTime;
+
+                    const destLower = ((currentTripData ? currentTripData.destination : '') || 'India').toLowerCase();
+
+                    // Transport Mode Selection Rules
+                    if (destLower.includes('andaman')) {
+                        const isInterIsland = (p1.toLowerCase().includes('port blair') && p2.toLowerCase().includes('havelock')) ||
+                                             (p1.toLowerCase().includes('havelock') && p2.toLowerCase().includes('port blair')) ||
+                                             (p1.toLowerCase().includes('neil') && p2.toLowerCase().includes('havelock')) ||
+                                             (p1.toLowerCase().includes('havelock') && p2.toLowerCase().includes('neil')) ||
+                                             (p1.toLowerCase().includes('port blair') && p2.toLowerCase().includes('neil')) ||
+                                             (p1.toLowerCase().includes('neil') && p2.toLowerCase().includes('port blair'));
+                        if (isInterIsland) {
+                            recommendedMode = 'Govt Ferry / Makruzz Cruise';
+                            modeIcon = 'fa-ship';
+                            modeColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 dark:bg-cyan-500/20';
+                        } else if (roadD <= 1.5) {
+                            recommendedMode = 'Walking';
+                            modeIcon = 'fa-person-walking';
+                            modeColor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-500/20';
+                        } else if (roadD > 1.5 && roadD <= 12) {
+                            recommendedMode = 'Rental Scooter / Autorickshaw';
+                            modeIcon = 'fa-motorcycle';
+                            modeColor = 'text-amber-500 bg-amber-500/10 border-amber-500/20 dark:bg-amber-500/20';
+                        } else {
+                            recommendedMode = 'Tourist Cab / Taxi';
+                            modeIcon = 'fa-car';
+                            modeColor = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20';
+                        }
+                    } else if (destLower.includes('jaisalmer')) {
+                        const isDesertSafari = p1.toLowerCase().includes('dunes') || p2.toLowerCase().includes('dunes') || p1.toLowerCase().includes('safari') || p2.toLowerCase().includes('safari');
+                        if (isDesertSafari) {
+                            recommendedMode = '4x4 Thar Jeep Safari';
+                            modeIcon = 'fa-truck-monster';
+                            modeColor = 'text-orange-400 bg-orange-500/10 border-orange-500/20 dark:bg-orange-500/20';
+                        } else if (roadD <= 1.5) {
+                            recommendedMode = 'Walking';
+                            modeIcon = 'fa-person-walking';
+                            modeColor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-500/20';
+                        } else if (roadD > 1.5 && roadD <= 6) {
+                            recommendedMode = 'Auto Rickshaw';
+                            modeIcon = 'fa-motorcycle';
+                            modeColor = 'text-amber-500 bg-amber-500/10 border-amber-500/20 dark:bg-amber-500/20';
+                        } else {
+                            recommendedMode = 'Private Tourist Cab';
+                            modeIcon = 'fa-car';
+                            modeColor = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20';
+                        }
+                    } else if (destLower.includes('meghalaya') || destLower.includes('shillong')) {
+                        const isMountainPass = roadD > 18;
+                        if (isMountainPass) {
+                            recommendedMode = 'Private Tourist Cab / Taxi';
+                            modeIcon = 'fa-car';
+                            modeColor = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20';
+                        } else if (roadD <= 1.5) {
+                            recommendedMode = 'Walking';
+                            modeIcon = 'fa-person-walking';
+                            modeColor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-500/20';
+                        } else {
+                            recommendedMode = 'Local Shared Cab (Black & Yellow)';
+                            modeIcon = 'fa-car-side';
+                            modeColor = 'text-amber-500 bg-amber-500/10 border-amber-500/20 dark:bg-amber-500/20';
+                        }
+                    } else if (destLower.includes('goa')) {
+                        if (roadD <= 1.5) {
+                            recommendedMode = 'Walking';
+                            modeIcon = 'fa-person-walking';
+                            modeColor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-500/20';
+                        } else if (roadD > 1.5 && roadD <= 18) {
+                            recommendedMode = 'Rental Scooter / Bike';
+                            modeIcon = 'fa-motorcycle';
+                            modeColor = 'text-amber-500 bg-amber-500/10 border-amber-500/20 dark:bg-amber-500/20';
+                        } else {
+                            recommendedMode = 'Goa Cab / Taxi';
+                            modeIcon = 'fa-car';
+                            modeColor = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20';
+                        }
+                    } else if (destLower.includes('leh') || destLower.includes('ladakh')) {
+                        if (roadD <= 2) {
+                            recommendedMode = 'Walking / Rental Bike';
+                            modeIcon = 'fa-person-walking';
+                            modeColor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-500/20';
+                        } else if (roadD > 2 && roadD <= 15) {
+                            recommendedMode = 'Royal Enfield Bullet';
+                            modeIcon = 'fa-motorcycle';
+                            modeColor = 'text-orange-400 bg-orange-500/10 border-orange-500/20 dark:bg-orange-500/20';
+                        } else {
+                            recommendedMode = 'SUV 4x4 / Shared Cab';
+                            modeIcon = 'fa-truck-monster';
+                            modeColor = 'text-rose-500 bg-rose-500/10 border-rose-500/20 dark:bg-rose-500/20';
+                        }
+                    } else if (destLower.includes('alleppey') || destLower.includes('alappuzha') || destLower.includes('kerala') || destLower.includes('backwater')) {
+                        if (roadD <= 1.5) {
+                            recommendedMode = 'Walking';
+                            modeIcon = 'fa-person-walking';
+                            modeColor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-500/20';
+                        } else if (roadD > 1.5 && roadD <= 8) {
+                            recommendedMode = 'Shikara Boat / Ferry';
+                            modeIcon = 'fa-ship';
+                            modeColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 dark:bg-cyan-500/20';
+                        } else {
+                            recommendedMode = 'Houseboat / Taxi';
+                            modeIcon = 'fa-anchor';
+                            modeColor = 'text-sky-400 bg-sky-500/10 border-sky-500/20 dark:bg-sky-500/20';
+                        }
+                    } else if (destLower.includes('varanasi') || destLower.includes('banaras') || destLower.includes('kashi')) {
+                        const isGhat = p1.toLowerCase().includes('ghat') || p2.toLowerCase().includes('ghat') || p1.toLowerCase().includes('ganga') || p2.toLowerCase().includes('ganga');
+                        if (isGhat) {
+                            recommendedMode = 'Ganges Row Boat';
+                            modeIcon = 'fa-ship';
+                            modeColor = 'text-sky-400 bg-sky-500/10 border-sky-500/20 dark:bg-sky-500/20';
+                        } else if (roadD <= 1) {
+                            recommendedMode = 'Walk / Cycle Rickshaw';
+                            modeIcon = 'fa-bicycle';
+                            modeColor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-500/20';
+                        } else if (roadD > 1 && roadD <= 5) {
+                            recommendedMode = 'E-Rickshaw';
+                            modeIcon = 'fa-charging-station';
+                            modeColor = 'text-amber-500 bg-amber-500/10 border-amber-500/20 dark:bg-amber-500/20';
+                        } else {
+                            recommendedMode = 'Local Cab / Auto';
+                            modeIcon = 'fa-car';
+                            modeColor = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20';
+                        }
+                    } else if (destLower.includes('mumbai') || destLower.includes('delhi') || destLower.includes('new delhi') || destLower.includes('kolkata')) {
+                        if (roadD <= 1.5) {
+                            recommendedMode = 'Walking';
+                            modeIcon = 'fa-person-walking';
+                            modeColor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-500/20';
+                        } else if (roadD > 1.5 && roadD <= 7) {
+                            recommendedMode = 'Auto Rickshaw / Metro';
+                            modeIcon = 'fa-motorcycle';
+                            modeColor = 'text-amber-500 bg-amber-500/10 border-amber-500/20 dark:bg-amber-500/20';
+                        } else if (roadD > 7 && roadD <= 22) {
+                            recommendedMode = 'Local Train / Metro';
+                            modeIcon = 'fa-train-subway';
+                            modeColor = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20';
+                        } else {
+                            recommendedMode = 'Ola / Uber Cab';
+                            modeIcon = 'fa-car';
+                            modeColor = 'text-rose-500 bg-rose-500/10 border-rose-500/20 dark:bg-rose-500/20';
+                        }
+                    } else {
+                        if (roadD <= 1.2) {
+                            recommendedMode = 'Walking';
+                            modeIcon = 'fa-person-walking';
+                            modeColor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-500/20';
+                        } else if (roadD > 1.2 && roadD <= 3.5) {
+                            recommendedMode = 'Bicycle';
+                            modeIcon = 'fa-bicycle';
+                            modeColor = 'text-teal-500 bg-teal-500/10 border-teal-500/20 dark:bg-teal-500/20';
+                        } else if (roadD > 3.5 && roadD <= 8) {
+                            recommendedMode = 'Auto Rickshaw';
+                            modeIcon = 'fa-motorcycle';
+                            modeColor = 'text-amber-500 bg-amber-500/10 border-amber-500/20 dark:bg-amber-500/20';
+                        } else if (roadD > 8 && roadD <= 22) {
+                            recommendedMode = 'Bus / Metro';
+                            modeIcon = 'fa-bus';
+                            modeColor = 'text-sky-500 bg-sky-500/10 border-sky-500/20 dark:bg-sky-500/20';
+                        } else if (roadD > 22 && roadD <= 80) {
+                            recommendedMode = 'Taxi';
+                            modeIcon = 'fa-car';
+                            modeColor = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20';
+                        } else if (roadD > 80 && roadD <= 350) {
+                            recommendedMode = 'Train';
+                            modeIcon = 'fa-train';
+                            modeColor = 'text-rose-500 bg-rose-500/10 border-rose-500/20 dark:bg-rose-500/20';
+                        } else {
+                            recommendedMode = 'Flight';
+                            modeIcon = 'fa-plane';
+                            modeColor = 'text-purple-500 bg-purple-500/10 border-purple-500/20 dark:bg-purple-500/20';
+                        }
+                    }
+                    
+                    let aiTip = 'Optimal local route. Enjoy the sightseeing!';
+                    let warningBanner = '';
+
+                    if (recommendedMode === 'Flight') {
+                        warningBanner = 'Domestic flight required. Confirm luggage limits (usually 15kg check-in + 7kg cabin).';
+                    } else if (recommendedMode === 'Train') {
+                        warningBanner = 'Ensure you pre-book train tickets via IRCTC to secure comfortable AC coaches.';
+                    }
+
+                    if (destLower.includes('andaman')) {
+                        if (recommendedMode.includes('Ferry') || recommendedMode.includes('Cruise')) {
+                            aiTip = 'Makruzz/Nautika catamaran cruise connects Port Blair, Havelock & Neil. Boarding closes 20 mins prior to departure. Keep sea-sickness tablets handy!';
+                            warningBanner = 'Pre-book cruise/ferry tickets online 2 weeks in advance to avoid island stranding!';
+                        } else if (recommendedMode.includes('Scooter') || recommendedMode.includes('Bike')) {
+                            aiTip = 'Rental scooters (₹400/day) are the absolute best way to explore Havelock/Neil. Inspect tire treads and brakes before renting!';
+                            warningBanner = 'Strict traffic police rules: Both rider and pillion must wear helmets!';
+                        } else {
+                            aiTip = 'Local tourist cabs are available but tend to be pricey. Perfect for travel with luggage.';
+                        }
+                    } else if (destLower.includes('jaisalmer')) {
+                        if (recommendedMode.includes('Thar') || recommendedMode.includes('Safari')) {
+                            aiTip = 'Sam Sand Dunes Jeep Safari is incredibly thrilling. Ensure you travel with Rajasthan Tourism authorized operators.';
+                            warningBanner = 'Secure loose belongings and cameras. Dunes can be extremely steep and bumpy!';
+                        } else {
+                            aiTip = 'Local auto-rickshaws are convenient for fort and haveli hops. Agree on fare beforehand.';
+                        }
+                    } else if (destLower.includes('meghalaya') || destLower.includes('shillong')) {
+                        if (recommendedMode.includes('Cab') || recommendedMode.includes('Taxi')) {
+                            aiTip = 'Winding mountain routes with sharp turns. Drivers are highly experienced but visibility can drop rapidly.';
+                            warningBanner = 'Mountain fog warning: Avoid traveling on highway passes after 5:00 PM!';
+                        } else {
+                            aiTip = 'Walking is highly recommended inside Shillong police bazaar or near double-decker bridges.';
+                        }
+                    } else if (destLower.includes('leh') || destLower.includes('ladakh')) {
+                        if (recommendedMode.includes('Bullet') || recommendedMode.includes('Bike') || recommendedMode.includes('motorcycle')) {
+                            aiTip = 'Riding on the roof of the world! Always carry spare spark plugs, accelerator/clutch cables, and wear windproof gear.';
+                            warningBanner = 'Inner Line Permits are required. Keep 3-4 physical copies ready for checkpoints!';
+                        } else if (recommendedMode.includes('SUV') || recommendedMode.includes('Cab')) {
+                            aiTip = 'Highly recommended for Leh-Manali/Srinagar highway transits due to rugged water crossings.';
+                            warningBanner = 'Acclimatize in Leh for 48 hours before crossing high altitude passes!';
+                        } else {
+                            aiTip = 'Stray dogs and narrow lanes require caution. Acclimatize well.';
+                        }
+                    } else if (destLower.includes('goa')) {
+                        if (recommendedMode.includes('Scooter') || recommendedMode.includes('Bike')) {
+                            aiTip = 'Rental scooters (₹350-500/day) offer complete beach-hopping freedom. Check brakes & headlamps.';
+                            warningBanner = 'Goa police strictly fine riders without helmets or driving license papers!';
+                        } else {
+                            aiTip = 'Local Goa Miles app or taxi unions run local cabs. Standard pricing applies.';
+                        }
+                    } else {
+                        if (recommendedMode.includes('Walk')) {
+                            aiTip = 'Scenic walking trail. Best explored on foot!';
+                        } else if (recommendedMode.includes('Bicycle')) {
+                            aiTip = 'Rent a local bicycle or smart bike to explore scenic paths at your own pace.';
+                        } else if (recommendedMode.includes('Scooter') || recommendedMode.includes('Bike')) {
+                            aiTip = 'Fun riding route. Wear a helmet and enjoy the breeze!';
+                        } else if (recommendedMode.includes('Boat') || recommendedMode.includes('Ferry') || recommendedMode.includes('Shikara')) {
+                            aiTip = 'Beautiful water transit. Keep your camera ready!';
+                        } else if (recommendedMode.includes('Metro') || recommendedMode.includes('Train') || recommendedMode.includes('Bus')) {
+                            aiTip = 'Fast transit. Avoid peak hour road traffic!';
+                        } else if (recommendedMode.includes('Rickshaw')) {
+                            aiTip = 'Eco-friendly rickshaw ride. Great for narrow heritage alleys!';
+                        } else if (recommendedMode.includes('Cab') || recommendedMode.includes('Taxi') || recommendedMode.includes('SUV')) {
+                            aiTip = 'Hired cab recommended for convenience and comfort.';
+                        } else if (recommendedMode.includes('Flight')) {
+                            aiTip = 'Long-distance flight. Plan early airport arrival.';
+                        }
+                    }
+
+                    let costEst = '₹0';
+                    if (recommendedMode.includes('Walking')) costEst = 'Free';
+                    else if (recommendedMode.includes('Ferry') || recommendedMode.includes('Cruise')) costEst = `~₹${(1200 + roadD * 5).toFixed(0)}`;
+                    else if (recommendedMode.includes('Thar') || recommendedMode.includes('Safari')) costEst = `~₹${(1500 + roadD * 10).toFixed(0)}`;
+                    else if (recommendedMode.includes('Bicycle')) costEst = `~₹${(50 + roadD * 2).toFixed(0)}`;
+                    else if (recommendedMode.includes('Scooter') || recommendedMode.includes('Bike')) costEst = `~₹${(300 + roadD * 5).toFixed(0)}`;
+                    else if (recommendedMode.includes('Cab') || recommendedMode.includes('Taxi') || recommendedMode.includes('SUV')) costEst = `~₹${(150 + roadD * 18).toFixed(0)}`;
+                    else if (recommendedMode.includes('Auto')) costEst = `~₹${(50 + roadD * 12).toFixed(0)}`;
+                    else if (recommendedMode.includes('Bus') || recommendedMode.includes('Metro')) costEst = `~₹${(20 + roadD * 2).toFixed(0)}`;
+                    else if (recommendedMode.includes('Train')) costEst = `~₹${(350 + roadD * 1.5).toFixed(0)}`;
+                    else if (recommendedMode.includes('Flight')) costEst = `~₹${(3500 + roadD * 3).toFixed(0)}`;
+                    else costEst = `~₹${(80 + roadD * 10).toFixed(0)}`;
+
+                    if (isFallbackRoute) {
+                        stepsHtml += `
+                            <div class="text-[10px] font-medium p-2.5 bg-sky-500/5 dark:bg-sky-500/5 rounded-xl border border-sky-400/20 flex flex-col gap-1.5 mt-1.5 shadow-sm">
+                                <div class="flex items-center justify-between gap-1.5">
+                                    <span class="truncate text-slate-800 dark:text-slate-100 font-bold" style="max-width: 90px;">${p1}</span>
+                                    <i class="fa-solid fa-route text-[8px] text-sky-400"></i>
+                                    <span class="truncate text-slate-800 dark:text-slate-100 font-bold" style="max-width: 90px;">${p2}</span>
+                                </div>
+                                ${warningBanner ? `
+                                <div class="px-2.5 py-1.5 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg text-[8.5px] flex items-start gap-1.5 font-bold leading-tight border border-amber-500/25">
+                                    <i class="fa-solid fa-triangle-exclamation mt-0.5 animate-pulse shrink-0"></i>
+                                    <span>${warningBanner}</span>
+                                </div>` : ''}
+                                <div class="flex flex-col gap-1 text-[9px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200/50 dark:border-white/5">
+                                    <p class="flex items-center gap-1 font-bold text-sky-500"><i class="fa-solid fa-sparkles animate-pulse"></i> AI Route Suggestion:</p>
+                                    <p class="opacity-80 leading-tight">Map coordinates approximate. Transit via suggested medium and ask Ritu for detailed directions.</p>
+                                </div>
+                                <div class="flex justify-between items-center mt-1 pt-1.5 border-t border-slate-100 dark:border-white/5">
+                                    <span class="flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider ${modeColor}">
+                                        <i class="fa-solid ${modeIcon}"></i> ${recommendedMode}
+                                    </span>
+                                    <button onclick="sendQuickAction('How do I travel from ${p1} to ${p2} in ${currentTripData ? currentTripData.destination : 'India'}?')" class="px-2 py-0.5 rounded-md bg-sky-500 text-white font-black text-[8px] uppercase tracking-wider hover:bg-sky-600 active:scale-95 transition flex items-center gap-1">
+                                        <i class="fa-solid fa-comments"></i> Ask Ritu
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        stepsHtml += `
+                            <div class="text-[10px] font-medium p-2.5 bg-white/60 dark:bg-slate-900/40 hover:bg-white/90 dark:hover:bg-slate-900/60 transition-all duration-200 rounded-xl border border-slate-200/50 dark:border-white/5 flex flex-col gap-1.5 mt-1.5 shadow-sm">
+                                <div class="flex items-center justify-between gap-1.5">
+                                    <span class="truncate text-slate-800 dark:text-slate-100 font-bold" style="max-width: 90px;">${p1}</span>
+                                    <i class="fa-solid fa-chevron-right text-[8px] text-sky-500"></i>
+                                    <span class="truncate text-slate-800 dark:text-slate-100 font-bold" style="max-width: 90px;">${p2}</span>
+                                </div>
+                                ${warningBanner ? `
+                                <div class="px-2.5 py-1.5 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg text-[8.5px] flex items-start gap-1.5 font-bold leading-tight border border-amber-500/25">
+                                    <i class="fa-solid fa-triangle-exclamation mt-0.5 animate-pulse shrink-0"></i>
+                                    <span>${warningBanner}</span>
+                                </div>` : ''}
+                                <div class="flex justify-between items-center text-[9px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/50 dark:border-white/5">
+                                    <span class="flex items-center gap-1" title="Road Distance"><i class="fa-solid fa-route text-sky-400 text-[8px]"></i>${distText}</span>
+                                    <span class="flex items-center gap-1" title="Estimated Driving Time"><i class="fa-solid fa-car text-indigo-400 text-[8px]"></i>${driveTime} min</span>
+                                    <span class="flex items-center gap-1" title="Estimated Walking Time"><i class="fa-solid fa-person-walking text-emerald-400 text-[8px]"></i>${walkTime}</span>
+                                </div>
+                                <div class="flex items-center justify-between mt-0.5 pt-1.5 border-t border-slate-100 dark:border-white/5">
+                                    <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Transit Mode:</span>
+                                    <span class="flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider ${modeColor}">
+                                        <i class="fa-solid ${modeIcon}"></i> ${recommendedMode}
+                                    </span>
+                                </div>
+                                <div class="flex flex-col gap-0.5 text-[8.5px] text-sky-500/80 dark:text-sky-400/80 pt-1.5 border-t border-slate-100 dark:border-white/5">
+                                    <p class="flex items-center gap-1 font-bold"><i class="fa-solid fa-sparkles text-[8px] animate-pulse"></i> AI Suggestion:</p>
+                                    <p class="text-slate-500 dark:text-slate-400 opacity-90 leading-tight">${aiTip}</p>
+                                </div>
+                                <div class="flex justify-between items-center mt-1 pt-1.5 border-t border-slate-100 dark:border-white/5">
+                                    <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Est. Cost: <span class="text-emerald-500 font-extrabold text-[9px]">${costEst}</span></span>
+                                    <button onclick="sendQuickAction('How do I travel from ${p1} to ${p2} in ${currentTripData ? currentTripData.destination : 'India'}?')" class="px-2 py-0.5 rounded-md bg-sky-500 text-white font-black text-[8px] uppercase tracking-wider hover:bg-sky-600 active:scale-95 transition flex items-center gap-1">
+                                        <i class="fa-solid fa-comments"></i> Ask Ritu
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    totalSteps++;
+                } else {
+                    stepsHtml += `
+                        <div class="text-[10px] font-medium p-2.5 bg-white/40 dark:bg-slate-900/20 rounded-xl border border-slate-200/40 dark:border-white/5 flex flex-col gap-1 mt-1.5 opacity-85 animate-pulse">
+                            <div class="flex items-center justify-between gap-1.5">
+                                <span class="truncate text-slate-500 dark:text-slate-400 font-bold" style="max-width: 90px;">${p1}</span>
+                                <i class="fa-solid fa-chevron-right text-[8px] text-slate-400"></i>
+                                <span class="truncate text-slate-500 dark:text-slate-400 font-bold" style="max-width: 90px;">${p2}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-[9px] text-slate-400 dark:text-slate-500 mt-1 pt-1.5 border-t border-slate-100 dark:border-white/5">
+                                <span class="flex items-center gap-1"><i class="fa-solid fa-circle-notch fa-spin text-sky-500 text-[8px]"></i>Resolving route...</span>
+                            </div>
+                        </div>
+                    `;
+                    totalSteps++;
+                }
+            }
+
+            const summaryCard = document.getElementById('routeSummaryCard');
+            if (totalSteps > 0) {
+                content.innerHTML = stepsHtml;
+                panel.classList.remove('hidden');
+                
+                const expandable = document.getElementById('routeAnalyzerExpandable') || content;
+                const icon = document.getElementById('analyzerChevron');
+                if (isAnalyzerExpanded) {
+                    expandable.style.display = 'block';
+                    if (icon) icon.className = 'fa-solid fa-chevron-up text-[9px]';
+                } else {
+                    expandable.style.display = 'none';
+                    if (icon) icon.className = 'fa-solid fa-chevron-down text-[9px]';
+                }
+                
+                if (summaryCard && totalDistSum > 0) {
+                    document.getElementById('routeSummaryDistance').innerText = `${totalDistSum.toFixed(1)} km`;
+                    document.getElementById('routeSummaryDuration').innerText = `${totalDurationMins} mins`;
+                    summaryCard.classList.remove('hidden');
+                } else if (summaryCard) {
+                    summaryCard.classList.add('hidden');
+                }
+            } else {
+                panel.classList.add('hidden');
+                if (summaryCard) summaryCard.classList.add('hidden');
+            }
+        }
+
+        async function loadApp() {
+            initMap();
+            const id = new URLSearchParams(window.location.search).get('id');
+            let trip;
+
+            if (id) {
+                try {
+                    const res = await fetch(`/api/trips/${id}`);
+                    const result = await res.json();
+                    if (result.success) trip = result.data;
+                } catch (err) {
+                    console.error("Could not load database trip:", err);
+                }
+            } else {
+                const temp = sessionStorage.getItem('tempTrip');
+                if (temp) trip = JSON.parse(temp);
+            }
+
+            currentTripData = trip;
+            
+            if (trip) {
+                updateWeatherBanner(trip.destination);
+                document.getElementById('displayTitle').innerText = `Trip to ${trip.destination}`;
+                document.getElementById('displayStats').innerText = `${trip.days} Days • ₹${trip.budget} • ${trip.vibe}`;
+                
+                // Fly the map to the general destination so it's not looking at empty India
+                try {
+                    const r = await fetch(`/api/geocode?q=${encodeURIComponent(trip.destination)}`);
+                    const d = await r.json();
+                    if(d && d.length>0) {
+                        const lat = parseFloat(d[0].lat);
+                        const lon = parseFloat(d[0].lon);
+                        if (!isNaN(lat) && !isNaN(lon) && isFinite(lat) && isFinite(lon)) {
+                            map.flyTo([lat, lon], 10, {duration: 2});
+                        }
+                    }
+                } catch(e) {}
+
+                // Render from DB Chat History if it exists, otherwise generate first message
+                if (trip.chatHistory && trip.chatHistory.length > 0) {
+                    trip.chatHistory.forEach(msg => {
+                        appendMessage(msg.role, msg.content);
+                    });
+                    setStatus('Online', 'text-emerald-400');
+                    
+                    // Populate locations on Leaflet map from existing schedule
+                    if (trip.itineraryData && trip.itineraryData.schedule) {
+                        plotAllLocationsSequential(trip.itineraryData.schedule, trip.destination);
+                    }
+                } else if (trip.itineraryData && trip.itineraryData.schedule) {
+                    let formattedSchedule = `Here is your tailor-made itinerary for **${trip.destination}**! I have embedded interactive maps tags for you. Click any blue tag to explore it on the map:\n\n`;
+                    trip.itineraryData.schedule.forEach(day => {
+                        const loc = day.location || trip.destination || '';
+                        formattedSchedule += `### Day ${day.day}: ${loc}\n`;
+                        formattedSchedule += `${day.activity}\n\n`;
+                    });
+
+                    // Add a tiny delay to make it feel like AI just "generated" it
+                    setTimeout(() => {
+                        appendMessage('assistant', formattedSchedule);
+                        setStatus('Online', 'text-emerald-400');
+                        plotAllLocationsSequential(trip.itineraryData.schedule, trip.destination);
+                    }, 500);
+                } else {
+                    appendMessage('assistant', `Hi! I'm ready to help you plan your trip to **${trip.destination}**. What would you like to do?`);
+                    setStatus('Online', 'text-emerald-400');
+                }
+            } else {
+                appendMessage('assistant', `👋 Hi! I'm **Ritu**, your AI Travel Co-Pilot!\n\nI couldn't find your trip data. This could happen if:\n- You came here directly without creating a trip\n- Your session has expired\n\nTap **Plan New Trip** in the nav above to create your personalized itinerary, then come back here to explore your route, chat with me, and discover hidden gems! 🗺️`);
+                setStatus('Warning', 'text-yellow-400');
+            }
+
+            if (sessionStorage.getItem('saveTripOnLoad') === 'true') {
+                sessionStorage.removeItem('saveTripOnLoad');
+                setTimeout(() => {
+                    saveTripAndRedirect();
+                }, 1000);
+            }
+        }
+
+
+        function updateSpotlight(e) {
+            document.body.style.setProperty('--x', e.clientX + 'px');
+            document.body.style.setProperty('--y', e.clientY + 'px');
+        }
+
+        function showNotification(message, type = 'success') {
+            let container = document.getElementById('notificationContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notificationContainer';
+                container.className = 'fixed top-24 right-6 z-[1100] flex flex-col gap-3 pointer-events-none';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'toast-notification pointer-events-auto bg-white/95 dark:bg-[#1e293b]/95 backdrop-blur-xl border border-emerald-500/30 dark:border-emerald-500/20 text-slate-800 dark:text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 max-w-sm transform translate-x-[120%] transition-all duration-300';
+            
+            let icon = '<i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>';
+            if (type === 'error') {
+                toast.className = toast.className.replace('border-emerald-500/30', 'border-rose-500/30').replace('border-emerald-500/20', 'border-rose-500/20');
+                icon = '<i class="fa-solid fa-circle-xmark text-rose-500 text-lg"></i>';
+            } else if (type === 'info') {
+                toast.className = toast.className.replace('border-emerald-500/30', 'border-sky-500/30').replace('border-emerald-500/20', 'border-sky-500/20');
+                icon = '<i class="fa-solid fa-circle-info text-sky-500 text-lg"></i>';
+            }
+
+            toast.innerHTML = `
+                ${icon}
+                <div class="flex-1">
+                    <p class="text-xs font-black uppercase tracking-wider">${type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Notification'}</p>
+                    <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">${message}</p>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => {
+                toast.style.transform = 'translateX(0)';
+            }, 50);
+
+            // Hide and remove
+            setTimeout(() => {
+                toast.style.transform = 'translateX(120%)';
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 4000);
+        }
+
+        function shareToWhatsApp() {
+            const title = document.getElementById('displayTitle').innerText;
+            let message = `✨ ${title} ✨\n━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+            
+            if (currentTripData && currentTripData.itineraryData && currentTripData.itineraryData.schedule) {
+                const schedule = currentTripData.itineraryData.schedule;
+                schedule.forEach((day, index) => {
+                    message += `🗓️ Day ${day.day}: ${day.location}\n`;
+                    const cleanActivity = (day.activity || '').replace(/\*\*/g, '');
+                    if (cleanActivity) {
+                        message += `   ↳ ${cleanActivity}\n`;
+                    }
+                    if (index < schedule.length - 1) {
+                        message += `      ↓\n`;
+                    }
+                });
+            } else {
+                message += `Check out my detailed mapped out trip! 🌍\n`;
+            }
+
+            const tripId = new URLSearchParams(window.location.search).get('id') || (currentTripData ? currentTripData._id : null);
+            if (tripId) {
+                message += `\n🔗 View my live interactive map flowchart here:\n`;
+                message += `👉 ${window.location.origin}/shared-itinerary.html?id=${tripId}\n`;
+            }
+
+            message += `\n━━━━━━━━━━━━━━━━━━━━━━\n`;
+            message += `🤖 This itinerary was made by Journey AI!\n`;
+            message += `✨ Want to create your own itinerary? Use this:\n`;
+            message += `👉 ${window.location.origin}/index.html`;
+
+            showNotification('Generating WhatsApp sharing text...', 'info');
+            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        async function saveTripAndRedirect() {
+            const id = new URLSearchParams(window.location.search).get('id');
+            const statusBadge = document.getElementById('aiStatus');
+            
+            if (id) {
+                // Update existing trip in database via PUT
+                if (!currentTripData) {
+                    showNotification('No trip data found to update!', 'error');
+                    return;
+                }
+                setStatus('Updating...', 'text-sky-400');
+                try {
+                    const response = await fetch(`/api/trips/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(currentTripData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        setStatus('Updated!', 'text-emerald-400');
+                        showNotification('Trip changes updated successfully!');
+                        setTimeout(() => {
+                            window.location.href = 'saved-trips.html';
+                        }, 1500);
+                    } else {
+                        setStatus('Error', 'text-rose-400');
+                        if (response.status === 401) {
+                            showNotification('Please log in to save your changes!', 'info');
+                            sessionStorage.setItem('saveTripOnLoad', 'true');
+                            setTimeout(() => {
+                                toggleLoginModal();
+                            }, 1000);
+                        } else {
+                            showNotification(data.message || 'Failed to update trip. Please try again.', 'error');
+                        }
+                    }
+                } catch (err) {
+                    console.error("Update error:", err);
+                    setStatus('Failed', 'text-rose-400');
+                    showNotification('Connection error while updating trip.', 'error');
+                }
+                return;
+            }
+
+            const temp = sessionStorage.getItem('tempTrip');
+            if (!temp) {
+                showNotification('No trip data found to save!', 'error');
+                return;
+            }
+
+            setStatus('Saving...', 'text-sky-400');
+
+            try {
+                const response = await fetch('/api/trips/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: temp
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    setStatus('Saved!', 'text-emerald-400');
+                    showNotification('Trip saved to your gallery successfully!');
+                    // Remove temp data after successful save
+                    sessionStorage.removeItem('tempTrip');
+                    // Small delay for visual feedback before redirect
+                    setTimeout(() => {
+                        window.location.href = 'saved-trips.html';
+                    }, 1500);
+                } else {
+                    setStatus('Error', 'text-rose-400');
+                    if (response.status === 401) {
+                        showNotification('Please log in to save your trip!', 'info');
+                        sessionStorage.setItem('saveTripOnLoad', 'true');
+                        setTimeout(() => {
+                            toggleLoginModal();
+                        }, 1000);
+                    } else {
+                        showNotification(data.message || 'Failed to save trip. Please try again.', 'error');
+                    }
+                }
+            } catch (err) {
+                console.error("Save error:", err);
+                setStatus('Failed', 'text-rose-400');
+                showNotification('Connection error while saving trip.', 'error');
+            }
+        }
+
+        let highlightedDay = null;
+
+        function updateMapRoutesStyles() {
+            const scheduleArr = currentTripData?.itineraryData?.schedule || [];
+            scheduleArr.forEach(day => {
+                const isVisible = dayVisibilityMap[day.day] !== false;
+                const isHighlighted = highlightedDay === null || day.day === highlightedDay;
+                
+                const polylines = dayPolylinesMap[day.day] || [];
+                const markers = dayMarkersMap[day.day] || [];
+                
+                // 1. Update Polylines
+                polylines.forEach(poly => {
+                    if (!poly.setStyle) {
+                        // Midpoint distance label markers
+                        if (poly.getElement) {
+                            const el = poly.getElement();
+                            if (el) el.style.display = (isVisible && isHighlighted) ? 'block' : 'none';
+                        }
+                        return;
+                    }
+                    const isGlow = poly.options && poly.options.opacity < 0.5;
+                    const isDash = poly.options && poly.options.dashArray;
+                    
+                    if (!isVisible) {
+                        poly.setStyle({ opacity: 0 });
+                    } else if (highlightedDay === null) {
+                        poly.setStyle({
+                            weight: isGlow ? 10 : isDash ? 3.5 : 5,
+                            opacity: isGlow ? 0.18 : isDash ? 0.7 : 0.92
+                        });
+                    } else if (isHighlighted) {
+                        poly.setStyle({
+                            weight: isGlow ? 18 : isDash ? 5 : 7,
+                            opacity: isGlow ? 0.28 : 1.0
+                        });
+                    } else {
+                        poly.setStyle({
+                            weight: 1,
+                            opacity: isGlow ? 0 : 0.12
+                        });
+                    }
+                });
+                
+                // 2. Update Place Markers
+                markers.forEach(marker => {
+                    if (!isVisible) {
+                        marker.setOpacity(0);
+                        if (marker.getElement) {
+                            const el = marker.getElement();
+                            if (el) el.style.display = 'none';
+                        }
+                    } else {
+                        if (marker.getElement) {
+                            const el = marker.getElement();
+                            if (el) el.style.display = 'block';
+                        }
+                        if (highlightedDay === null) {
+                            marker.setOpacity(1.0);
+                        } else if (isHighlighted) {
+                            marker.setOpacity(1.0);
+                        } else {
+                            marker.setOpacity(0.25);
+                        }
+                    }
+                });
+            });
+        }
+
+        function handleCheckboxToggle(dayNum, isChecked) {
+            dayVisibilityMap[dayNum] = isChecked;
+            updateMapRoutesStyles();
+            recalculateTransitRoutes();
+            showNotification(`Day ${dayNum} Route ${isChecked ? 'Visible' : 'Hidden'}`, "info");
+        }
+
+        function highlightDayRoute(dayNum) {
+            const legendEl = document.getElementById('mapLegend');
+            
+            // Toggle highlight if the same day is clicked again
+            if (highlightedDay === dayNum) {
+                highlightedDay = null;
+                showNotification("Showing all days route", "info");
+            } else {
+                highlightedDay = dayNum;
+                showNotification(`Focusing on Day ${dayNum} Route`, "success");
+            }
+            
+            // 1. Update polylines and markers styles
+            updateMapRoutesStyles();
+            
+            // 2. Zoom to the selected day's bounds if highlighted
+            if (highlightedDay !== null) {
+                const coords = dayCoordinatesMap[highlightedDay];
+                if (coords && coords.length > 0) {
+                    try {
+                        map.flyToBounds(L.latLngBounds(coords), { padding: [50, 50], duration: 1.5 });
+                    } catch(e) {}
+                }
+            } else {
+                // Fit to all coordinates
+                const allCoords = [];
+                Object.values(dayCoordinatesMap).forEach(arr => allCoords.push(...arr));
+                if (allCoords.length > 0) {
+                    try {
+                        map.flyToBounds(L.latLngBounds(allCoords), { padding: [50, 50], duration: 1.5, maxZoom: 14 });
+                    } catch(e) {}
+                }
+            }
+            
+            // Show/hide "Show All" button
+            const showAllBtn = document.getElementById('showAllDaysBtn');
+            if (showAllBtn) showAllBtn.style.display = highlightedDay !== null ? 'block' : 'none';
+
+            // 3. Highlight the legend capsule in UI
+            if (legendEl) {
+                const capsules = legendEl.querySelectorAll('.legend-capsule');
+                capsules.forEach(capsule => {
+                    const capsuleDay = parseInt(capsule.getAttribute('data-day'));
+                    if (highlightedDay === null) {
+                        capsule.classList.remove('ring-2', 'ring-sky-500', 'bg-sky-500/20');
+                        capsule.classList.add('bg-white/40', 'dark:bg-slate-800/40');
+                        capsule.style.opacity = '1';
+                    } else if (capsuleDay === highlightedDay) {
+                        capsule.classList.add('ring-2', 'ring-sky-500', 'bg-sky-500/20');
+                        capsule.classList.remove('bg-white/40', 'dark:bg-slate-800/40');
+                        capsule.style.opacity = '1';
+                    } else {
+                        capsule.classList.remove('ring-2', 'ring-sky-500', 'bg-sky-500/20');
+                        capsule.classList.add('bg-white/40', 'dark:bg-slate-800/40');
+                        capsule.style.opacity = '0.4';
+                    }
+                });
+            }
+
+            // 4. Recalculate transit routes and summary card
+            recalculateTransitRoutes();
+        }
+
+        window.addEventListener('load', loadApp);
+    </script>
+    <script src="navbar.js"></script>
+    <script src="dynamic-bg.js"></script>
+</body>
+</html>

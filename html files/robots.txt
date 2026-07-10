@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /profile.html
+
+Sitemap: https://journeyai.vercel.app/sitemap.xml

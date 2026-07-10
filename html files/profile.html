@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Manage your JourneyAI profile, dietary preferences, currency, travel pace, and language settings.">
+    <title>Journey AI - Your Profile</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+    <script>
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <style>
+        :root {
+            --primary: #38BDF8;
+            --bg: #F8FAFC;
+            --text: #0F172A;
+            --glass: rgba(255, 255, 255, 0.45);
+            --border: rgba(255, 255, 255, 0.5);
+            --item-bg: rgba(0, 0, 0, 0.03);
+            --card-inner: #ffffff;
+        }
+
+        [data-theme='dark'] {
+            --bg: #0F172A;
+            --text: #F8FAFC;
+            --glass: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --item-bg: rgba(255, 255, 255, 0.05);
+            --card-inner: #1e293b;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        #spotlight {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(56, 189, 248, 0.12) 0%, transparent 40%);
+            z-index: 1;
+        }
+
+        .iphone-glass {
+            background: var(--glass);
+            backdrop-filter: blur(15px) saturate(180%);
+            -webkit-backdrop-filter: blur(15px) saturate(180%);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.04);
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .diet-picker {
+            background: var(--item-bg);
+            padding: 4px;
+            border-radius: 14px;
+            display: flex;
+            gap: 2px;
+        }
+
+        .diet-opt {
+            padding: 6px 12px;
+            border-radius: 11px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            opacity: 0.5;
+        }
+
+        .diet-opt.active {
+            background: var(--card-inner);
+            color: var(--primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            opacity: 1;
+        }
+
+        .iphone-btn {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        /* Micro-interactions: Fade Up Animation */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-up {
+            opacity: 0;
+            animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .stagger-1 {
+            animation-delay: 100ms;
+        }
+
+        .stagger-2 {
+            animation-delay: 200ms;
+        }
+
+        .stagger-3 {
+            animation-delay: 300ms;
+        }
+    </style>
+</head>
+
+<body onmousemove="updateSpotlight(event)">
+    <div id="spotlight"></div>
+
+    <nav></nav>
+
+    <main class="pt-40 pb-20 px-6 max-w-2xl mx-auto relative z-10">
+        <div class="flex flex-col items-center mb-10 text-center">
+            <div class="relative mb-4">
+                <div
+                    class="w-32 h-32 rounded-[40px] bg-sky-100 flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-2xl overflow-hidden">
+                    <!-- Dynamically populated by updateProfileAvatar -->
+                </div>
+                <button onclick="openProfilePicModal()"
+                    class="absolute bottom-0 right-0 w-10 h-10 bg-white dark:bg-slate-800 rounded-2xl shadow-lg flex items-center justify-center text-sky-500 border border-slate-100 dark:border-slate-700 hover:scale-110 transition cursor-pointer z-10">
+                    <i class="fa-solid fa-camera text-sm"></i>
+                </button>
+            </div>
+            <h2 id="profileName" class="text-3xl font-black tracking-tight"></h2>
+            <p id="profileEmail" class="opacity-60 font-bold flex items-center gap-2">
+            </p>
+            <div id="saveIndicator" style="opacity: 0; transition: opacity 0.3s;" class="text-xs font-bold text-sky-500 mt-2"></div>
+        </div>
+
+        <div class="iphone-glass p-8 md:p-10 rounded-[48px] space-y-2">
+            <h3 class="text-[10px] font-black opacity-40 uppercase tracking-[0.3em] mb-6">Account Settings</h3>
+
+            <div class="setting-row">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-indian-rupee-sign text-sky-400 w-5"></i>
+                    <span class="font-bold opacity-80">Display Currency</span>
+                </div>
+                <span class="text-sky-500 font-black">INR (₹)</span>
+            </div>
+
+            <div class="setting-row">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-leaf text-sky-400 w-5"></i>
+                    <span class="font-bold opacity-80">Dietary Preference</span>
+                </div>
+                <div class="diet-picker">
+                    <div class="diet-opt active" onclick="setDiet(this, 'Veg')">Veg</div>
+                    <div class="diet-opt" onclick="setDiet(this, 'Non-Veg')">Non-Veg</div>
+                    <div class="diet-opt" onclick="setDiet(this, 'Both')">Both</div>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-passport text-sky-400 w-5"></i>
+                    <span class="font-bold opacity-80">Travel Document</span>
+                </div>
+                <span class="opacity-40 font-bold italic">Aadhaar Linked</span>
+            </div>
+
+            <div class="setting-row border-none">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-bell text-sky-400 w-5"></i>
+                    <span class="font-bold opacity-80">WhatsApp Updates</span>
+                </div>
+                <div id="waToggle"
+                    class="w-12 h-6 bg-emerald-400 rounded-full relative cursor-pointer transition-colors"
+                    onclick="toggleWhatsApp(this)">
+                    <div class="dot absolute right-1 top-1 w-4 h-4 bg-white rounded-full transition-all"></div>
+                </div>
+            </div>
+
+            <div class="pt-10">
+                <button id="logoutBtn" onclick="handleLogout()"
+                    class="w-full bg-red-500/10 text-red-500 py-5 rounded-[24px] font-black text-sm uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-3 hover:bg-red-500 hover:text-white active:scale-95">
+                    <i class="fa-solid fa-power-off"></i>
+                    <span id="logoutText">Logout Session</span>
+                </button>
+                <p class="text-center text-[9px] opacity-40 font-bold uppercase tracking-widest mt-4">
+                    Securely wipes data and ends session
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Profile Picture Modal -->
+    <div id="avatarModal"
+        class="hidden fixed inset-0 z-[200] flex justify-center items-center bg-black/50 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-slate-900 w-11/12 max-w-md p-6 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Choose an Avatar</h3>
+                <button onclick="closeProfilePicModal()"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-3 gap-4 mb-6" id="avatarGrid">
+                <!-- Avatars rendered here -->
+            </div>
+            <button onclick="saveAvatarAction()"
+                class="w-full bg-sky-500 text-white rounded-xl py-3 font-bold shadow-lg shadow-sky-500/30 hover:bg-sky-400 transition">Save
+                Avatar</button>
+        </div>
+    </div>
+
+    <script>
+        function updateSpotlight(e) {
+            document.body.style.setProperty('--x', e.clientX + 'px');
+            document.body.style.setProperty('--y', e.clientY + 'px');
+        }
+
+        const avatars = [
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Jasper",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Mimi",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Leo",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Bella",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Coco",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Luna",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Max",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Oreo"
+        ];
+
+        let selectedAvatar = null;
+
+        function openProfilePicModal() {
+            const grid = document.getElementById('avatarGrid');
+            grid.innerHTML = '';
+
+            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+            if (!selectedAvatar) selectedAvatar = userData.image || avatars[0];
+
+            avatars.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = `w-full aspect-square rounded-2xl bg-sky-50 cursor-pointer border-4 transition-all duration-200 hover:scale-105 ${selectedAvatar === url ? 'border-sky-500 shadow-md transform scale-105' : 'border-transparent'}`;
+                img.onclick = () => {
+                    selectedAvatar = url;
+                    openProfilePicModal(); // re-render to update selection
+                };
+                grid.appendChild(img);
+            });
+            document.getElementById('avatarModal').classList.remove('hidden');
+        }
+
+        function closeProfilePicModal() {
+            document.getElementById('avatarModal').classList.add('hidden');
+        }
+
+        async function saveAvatarAction() {
+            try {
+                const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+                const userId = userData.id || userData._id;
+
+                if (!userId) {
+                    showNotification("User session not found! Please log in again.", 'error');
+                    return;
+                }
+
+                const response = await fetch('/api/users/update-profile-picture', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, image: selectedAvatar })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    // Update user data locally
+                    userData.image = selectedAvatar;
+                    localStorage.setItem('userData', JSON.stringify(userData));
+
+                    // Update UI
+                    const name = userData.fullName || userData.name || 'User';
+                    updateProfileAvatar(selectedAvatar, name);
+                    
+                    // Update dynamic navbar avatars if present
+                    document.querySelectorAll('.navbar-avatar').forEach(img => {
+                        img.src = selectedAvatar;
+                    });
+
+                    closeProfilePicModal();
+                } else {
+                    showNotification(result.message || "Failed to update profile picture.", 'error');
+                }
+            } catch (err) {
+                console.error("Error updating avatar:", err);
+                showNotification("Connection error updating avatar.", 'error');
+            }
+        }
+
+        function setDiet(element, preference) {
+            document.querySelectorAll('.diet-opt').forEach(opt => opt.classList.remove('active'));
+            element.classList.add('active');
+            autoSaveProfile();
+        }
+
+        function toggleWhatsApp(el) {
+            const isOff = el.classList.toggle('bg-slate-400');
+            const dot = el.querySelector('.dot');
+            if (isOff) {
+                el.classList.remove('bg-emerald-400');
+                dot.style.right = 'auto';
+                dot.style.left = '4px';
+            } else {
+                el.classList.add('bg-emerald-400');
+                dot.style.left = 'auto';
+                dot.style.right = '4px';
+            }
+            // we could save whatsapp preferences here too, but for now we'll just trigger save
+            autoSaveProfile();
+        }
+
+        let userPreferences = { diet: 'None', currency: 'INR', pace: 'Balanced', language: 'English' };
+
+        async function autoSaveProfile() {
+            const indicator = document.getElementById('saveIndicator');
+            indicator.style.opacity = '1';
+            indicator.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Syncing...';
+
+            const activeDiet = document.querySelector('.diet-opt.active');
+            const uiDiet = activeDiet ? activeDiet.innerText : 'Both';
+            
+            // Map UI diet to Mongoose enum
+            let dbDiet = 'None';
+            if (uiDiet === 'Veg') dbDiet = 'Vegetarian';
+            else if (uiDiet === 'Non-Veg') dbDiet = 'Non-Vegetarian';
+            else dbDiet = 'None';
+
+            try {
+                const response = await fetch('/api/users/update-preferences', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ diet: dbDiet, currency: 'INR' })
+                });
+
+                if (response.ok) {
+                    setTimeout(() => {
+                        indicator.innerHTML = '<i class="fa-solid fa-check text-emerald-500"></i> Synced';
+                        setTimeout(() => indicator.style.opacity = '0', 2000);
+                    }, 500);
+                } else {
+                    throw new Error("Failed to save");
+                }
+            } catch (error) {
+                indicator.innerHTML = '<i class="fa-solid fa-xmark text-red-500"></i> Error';
+                setTimeout(() => indicator.style.opacity = '0', 2000);
+            }
+        }
+
+        function showLoginGuard() {
+            const main = document.querySelector('main');
+            main.innerHTML = `
+                <div class="py-20 text-center iphone-glass p-8 md:p-12 rounded-[48px] max-w-md mx-auto">
+                    <div class="w-16 h-16 bg-sky-500/10 rounded-full flex items-center justify-center mb-6 mx-auto">
+                        <i class="fa-solid fa-lock text-2xl text-sky-500"></i>
+                    </div>
+                    <h3 class="text-2xl font-black mb-2">Sign In to View Profile</h3>
+                    <p class="opacity-50 text-sm font-bold mb-6 max-w-xs mx-auto">Access and customize your preferences, dietary options, and avatars.</p>
+                    <button onclick="toggleLoginModal()" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-2xl font-black text-sm transition shadow-lg shadow-sky-500/20">
+                        <i class="fa-solid fa-user text-xs"></i> Log In / Register
+                    </button>
+                </div>
+            `;
+        }
+
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/users/profile');
+                if (response.status === 401) {
+                    showLoginGuard();
+                    return;
+                }
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.preferences) {
+                    userPreferences = result.data.preferences;
+                    const savedDiet = userPreferences.diet || 'None';
+
+                    // Map DB enum back to UI text
+                    let uiDiet = 'Both';
+                    if (savedDiet === 'Vegetarian') uiDiet = 'Veg';
+                    else if (savedDiet === 'Non-Vegetarian') uiDiet = 'Non-Veg';
+                    else uiDiet = 'Both';
+
+                    // Update Diet UI 
+                    document.querySelectorAll('.diet-opt').forEach(opt => {
+                        opt.classList.remove('active');
+                        if (opt.innerText === uiDiet) {
+                            opt.classList.add('active');
+                        }
+                    });
+                }
+
+                // Only load user details if authenticated
+                loadUserDetails();
+            } catch (error) {
+                console.error("Could not load profile:", error);
+            }
+        }
+
+        function updateProfileAvatar(imageUrl, name) {
+            const container = document.querySelector('.w-32.h-32.rounded-\\[40px\\]');
+            if (!container) return;
+            
+            // Clear container first
+            container.innerHTML = '';
+            
+            if (imageUrl) {
+                const img = document.createElement('img');
+                img.id = 'profileImage';
+                img.alt = 'Avatar';
+                img.className = 'w-full h-full object-cover';
+                img.setAttribute('referrerpolicy', 'no-referrer');
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    let fallback = container.querySelector('.avatar-fallback');
+                    if (!fallback) {
+                        fallback = document.createElement('div');
+                        fallback.className = 'avatar-fallback w-full h-full flex items-center justify-center text-white font-extrabold text-3xl bg-gradient-to-br from-sky-400 to-indigo-500';
+                        container.appendChild(fallback);
+                    }
+                    fallback.textContent = (name || 'User').charAt(0).toUpperCase();
+                };
+                img.src = imageUrl;
+                container.appendChild(img);
+            } else {
+                const fallback = document.createElement('div');
+                fallback.className = 'avatar-fallback w-full h-full flex items-center justify-center text-white font-extrabold text-3xl bg-gradient-to-br from-sky-400 to-indigo-500';
+                fallback.textContent = (name || 'User').charAt(0).toUpperCase();
+                container.appendChild(fallback);
+            }
+        }
+
+        function loadUserDetails() {
+            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+            const name = userData.fullName || userData.name || 'User';
+            
+            document.getElementById('profileName').innerText = name;
+            
+            if (userData.email) {
+                document.getElementById('profileEmail').innerHTML = `<i class="fa-solid fa-envelope text-sky-400 text-xs"></i> ${userData.email}`;
+            } else {
+                document.getElementById('profileEmail').innerHTML = `<i class="fa-solid fa-envelope text-sky-400 text-xs"></i> No email provided`;
+            }
+            
+            updateProfileAvatar(userData.image, name);
+        }
+
+        async function handleLogout() {
+            const btn = document.getElementById('logoutBtn');
+            const text = document.getElementById('logoutText');
+            btn.style.pointerEvents = 'none';
+            btn.classList.add('bg-red-600', 'text-white');
+            text.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin"></i> Wiping Data...';
+
+            try {
+                // Terminate session on backend
+                await fetch('/auth/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (err) {
+                console.warn('Backend logout failed, clearing locally anyway:', err);
+            }
+
+            // Always clear locally
+            localStorage.clear();
+            sessionStorage.clear();
+
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1200);
+        }
+
+        window.onload = () => {
+            loadProfile();
+        };
+    </script>
+    <script src="navbar.js"></script>
+    <script src="dynamic-bg.js"></script>
+</body>
+
+</html>

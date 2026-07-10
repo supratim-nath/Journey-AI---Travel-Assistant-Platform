@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Relive your adventures! Access your saved Indian travel itineraries, hidden gems, and AI-optimized routes on Journey AI.">
+    <meta name="keywords" content="Saved Itineraries, My Trips, Travel History, Indian Adventure Hub">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Your Saved Adventures — Journey AI Portfolio">
+    <meta property="og:description" content="Check out the personalized travel itineraries I've planned with Journey AI. Where to next?">
+    <meta property="og:image" content="assets/logo.jpg">
+
+    <title>Your Saved Adventures — Journey AI</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+    <script>
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <style>
+        :root {
+            --primary: #38BDF8;
+            --bg: #F8FAFC;
+            --text: #0F172A;
+            --glass: rgba(255, 255, 255, 0.55);
+            --border: rgba(255, 255, 255, 0.45);
+            --card-inner: rgba(255, 255, 255, 0.75);
+            --input-bg: rgba(0, 0, 0, 0.03);
+        }
+
+        [data-theme='dark'] {
+            --bg: #0F172A;
+            --text: #F8FAFC;
+            --glass: rgba(15, 23, 42, 0.45);
+            --border: rgba(255, 255, 255, 0.08);
+            --card-inner: rgba(15, 23, 42, 0.35);
+            --input-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        #spotlight {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(56, 189, 248, 0.1) 0%, transparent 40%);
+            z-index: 1;
+        }
+
+        .iphone-glass {
+            background: var(--glass);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 32px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-8px);
+            background: var(--card-inner);
+            box-shadow: 0 20px 40px rgba(56, 189, 248, 0.12);
+        }
+
+        .inner-content {
+            background: var(--card-inner);
+            transition: background-color 0.4s ease;
+        }
+
+        .btn-ios {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--primary);
+            font-weight: 700;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-ios:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .search-bar {
+            background: var(--input-bg);
+            border: 2px dashed rgba(56, 189, 248, 0.2);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        /* Micro-interactions: Fade Up Animation */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-up {
+            opacity: 0;
+            animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .stagger-1 {
+            animation-delay: 100ms;
+        }
+
+        .stagger-2 {
+            animation-delay: 200ms;
+        }
+
+        .stagger-3 {
+            animation-delay: 300ms;
+        }
+    </style>
+</head>
+
+<body onmousemove="updateSpotlight(event)">
+    <div id="spotlight"></div>
+
+    <nav></nav>
+
+    <main class="pt-40 pb-20 px-6 max-w-6xl mx-auto relative z-10">
+        <div class="flex flex-col md:flex-row justify-between items-end mb-12 gap-6 animate-fade-up stagger-1">
+            <div>
+                <h2 class="text-4xl font-black tracking-tight">Trip Library</h2>
+                <p class="opacity-60 font-bold mt-1">Access your AI-generated memories.</p>
+            </div>
+
+            <div class="search-bar p-2 flex items-center gap-3 w-full md:w-96">
+                <i class="fa-solid fa-wand-magic-sparkles text-sky-400 ml-3"></i>
+                <input type="text" id="searchInput" placeholder="Search your journeys..."
+                    class="bg-transparent border-none focus:ring-0 w-full text-sm font-bold text-inherit placeholder:opacity-40">
+            </div>
+        </div>
+
+        <div id="tripsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8 animate-fade-up stagger-2">
+            <div class="col-span-full py-20 text-center opacity-20">
+                <i class="fa-solid fa-circle-notch animate-spin text-4xl mb-4"></i>
+                <p class="font-bold uppercase tracking-widest text-xs">Syncing with your vault...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Mouse follow effect
+        function updateSpotlight(e) {
+            document.body.style.setProperty('--x', e.clientX + 'px');
+            document.body.style.setProperty('--y', e.clientY + 'px');
+        }
+
+
+        async function loadSavedTrips() {
+            const grid = document.getElementById('tripsGrid');
+
+            try {
+                const response = await fetch('/api/trips/all-saved');
+                
+                // Handle 401 Unauthorized — not logged in
+                if (response.status === 401) {
+                    grid.innerHTML = `
+                        <div class="col-span-full py-32 text-center glass-card">
+                            <div class="w-16 h-16 bg-sky-500/10 rounded-full flex items-center justify-center mb-6 mx-auto">
+                                <i class="fa-solid fa-lock text-2xl text-sky-500"></i>
+                            </div>
+                            <h3 class="text-2xl font-black mb-2">Sign In to View Your Trips</h3>
+                            <p class="opacity-50 text-sm font-bold mb-6 max-w-xs mx-auto">Your saved adventures are waiting. Log in to access your personalized trip library.</p>
+                            <button onclick="toggleLoginModal()" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-2xl font-black text-sm transition shadow-lg shadow-sky-500/20">
+                                <i class="fa-solid fa-user text-xs"></i> Log In / Register
+                            </button>
+                        </div>`;
+                    return;
+                }
+                
+                const result = await response.json();
+
+                if (!result.success || !result.data || result.data.length === 0) {
+                    grid.innerHTML = `
+                        <div class="col-span-full py-32 text-center glass-card">
+                            <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6 mx-auto">
+                                <i class="fa-solid fa-suitcase text-2xl opacity-30"></i>
+                            </div>
+                            <p class="text-xl font-black opacity-40 mb-2">No saved adventures yet.</p>
+                            <p class="text-sm opacity-30 font-bold mb-6">Generate your first AI itinerary to get started!</p>
+                            <a href="create-trip.html" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-2xl font-black text-sm transition shadow-lg shadow-sky-500/20">
+                                <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Plan My First Trip
+                            </a>
+                        </div>`;
+                    return;
+                }
+
+                // Inject dynamic cards
+                grid.innerHTML = result.data.map(trip => `
+                    <div class="glass-card overflow-hidden group trip-card" data-destination="${trip.destination.toLowerCase()}" data-vibe="${(trip.vibe || '').toLowerCase()}">
+                        <div class="h-40 bg-slate-800 relative overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-t from-sky-500/40 to-transparent z-10"></div>
+                            <img id="trip-img-${trip._id}" src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80" 
+                                 class="w-full h-full object-cover group-hover:scale-110 transition duration-700 opacity-60" 
+                                 alt="${trip.destination}">
+                            <span class="absolute top-4 right-4 z-20 iphone-glass px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                ${trip.days} Days
+                            </span>
+                        </div>
+                        <div class="p-8 relative z-20 -mt-12">
+                            <div class="inner-content p-6 rounded-[24px] shadow-xl">
+                                <h3 class="text-2xl font-black mb-1 capitalize">${trip.destination}</h3>
+                                <p class="opacity-40 text-[10px] font-black uppercase tracking-widest mb-6">
+                                    ${trip.vibe || 'Adventure'} &bull; AI Optimized
+                                </p>
+                                <div class="flex justify-between items-center border-t border-white/10 pt-4">
+                                    <div>
+                                        <span class="block text-[10px] font-black opacity-40 uppercase">Budget</span>
+                                        <span class="font-black text-sky-500 text-lg">₹${Number(trip.budget).toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <a href="itinerary.html?id=${trip._id}" class="btn-ios px-5 py-2 text-xs flex items-center gap-1.5">
+                                        <i class="fa-solid fa-map-location-dot text-[10px]"></i> Explore
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`).join('');
+
+                // ASYNC INTELLIGENT IMAGE FETCHING: prioritize Wikipedia, fallback to Unsplash
+                result.data.forEach(async (trip) => {
+                    const imgElement = document.getElementById(`trip-img-${trip._id}`);
+                    if (!imgElement) return;
+
+                    let imgSrc = null;
+
+                    try {
+                        // 1. Try Wikipedia for official landmark imagery
+                        const wikiController = new AbortController();
+                        const wikiTimeout = setTimeout(() => wikiController.abort(), 3000);
+                        const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(trip.destination)}`, { signal: wikiController.signal });
+                        clearTimeout(wikiTimeout);
+                        if (wikiRes.ok) {
+                            const wikiData = await wikiRes.json();
+                            if (wikiData.thumbnail && wikiData.thumbnail.source) {
+                                imgSrc = wikiData.thumbnail.source;
+                            }
+                        }
+
+                        // 2. Fallback to Unsplash if Wiki has no image
+                        if (!imgSrc) {
+                            const unsplashController = new AbortController();
+                            const unsplashTimeout = setTimeout(() => unsplashController.abort(), 3000);
+                            const unsplashRes = await fetch(`/api/trips/image/unsplash?query=${encodeURIComponent(trip.destination + " travel landmark")}`, { signal: unsplashController.signal });
+                            clearTimeout(unsplashTimeout);
+                            const unsplashData = await unsplashRes.json();
+                            if (unsplashData.success && unsplashData.url) {
+                                imgSrc = unsplashData.url;
+                            }
+                        }
+
+                        if (imgSrc) {
+                            imgElement.src = imgSrc;
+                            imgElement.classList.remove('opacity-60');
+                            imgElement.classList.add('opacity-100');
+                        }
+                    } catch (e) {
+                        console.error("Image pipeline failed for", trip.destination, e);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Fetch error:", error);
+                grid.innerHTML = `
+                    <div class="col-span-full py-20 text-center glass-card">
+                        <div class="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-4 mx-auto">
+                            <i class="fa-solid fa-triangle-exclamation text-2xl text-rose-500"></i>
+                        </div>
+                        <p class="font-black text-rose-500 mb-2">Connection Error</p>
+                        <p class="text-sm opacity-50 font-bold">Could not connect to the server. Please try refreshing the page.</p>
+                    </div>`;
+            }
+        }
+
+        window.addEventListener('load', () => {
+            loadSavedTrips();
+            
+            // Add search filtering logic
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase().trim();
+                    document.querySelectorAll('.trip-card').forEach(card => {
+                        const destination = card.getAttribute('data-destination') || '';
+                        const vibe = card.getAttribute('data-vibe') || '';
+                        if (destination.includes(query) || vibe.includes(query)) {
+                            card.style.display = 'block';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+    <script src="navbar.js"></script>
+    <script src="dynamic-bg.js"></script>
+</body>
+
+</html>

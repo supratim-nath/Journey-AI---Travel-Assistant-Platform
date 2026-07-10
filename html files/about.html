@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn how JourneyAI uses generative AI, RAG, and real-time data to create personalized Indian travel itineraries.">
+    <title>About & How It Works - Journey AI</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        // Apply theme immediately to prevent flashing
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <style>
+        :root {
+            --primary: #38BDF8;
+            --bg: #F8FAFC;
+            --text: #0F172A;
+            --glass: rgba(255, 255, 255, 0.45);
+            --border: rgba(255, 255, 255, 0.5);
+            --card-text: #1e293b;
+        }
+
+        [data-theme='dark'] {
+            --bg: #0F172A;
+            --text: #F8FAFC;
+            --glass: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --card-text: #f8fafc;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* Spotlight Background Effect */
+
+        #spotlight {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(56, 189, 248, 0.12) 0%, transparent 40%);
+            z-index: 1;
+        }
+
+        /* iPhone Glass Styling */
+
+        .iphone-glass {
+            background: var(--glass);
+            backdrop-filter: blur(15px) saturate(180%);
+            -webkit-backdrop-filter: blur(15px) saturate(180%);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04);
+            transition: background 0.4s ease, border 0.4s ease;
+        }
+
+        .iphone-btn {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .iphone-btn:hover {
+            background: rgba(255, 255, 255, 0.85);
+            transform: translateY(-2px);
+        }
+
+        [data-theme='dark'] .iphone-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .step-badge {
+            background: var(--primary);
+            color: white;
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 20px rgba(56, 189, 248, 0.2);
+        }
+
+        .btn-main {
+            background: var(--primary);
+            color: white !important;
+            font-weight: 700;
+            border-radius: 9999px;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.4);
+        }
+
+        .btn-main:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 30px -5px rgba(56, 189, 248, 0.5);
+        }
+
+        .section-line::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 100px;
+            bottom: 100px;
+            width: 2px;
+            background: linear-gradient(to bottom, transparent, rgba(56, 189, 248, 0.2), transparent);
+        }
+    </style>
+</head>
+
+<body onmousemove="updateSpotlight(event)">
+    <div id="spotlight"></div>
+
+    <nav></nav>
+
+    <header class="max-w-5xl mx-auto text-center pt-48 pb-32 px-6 relative z-10">
+        <span class="text-sky-400 font-extrabold tracking-widest uppercase text-xs mb-4 block">The Journey AI
+            Process</span>
+        <h1 class="text-6xl md:text-8xl font-black mb-8 tracking-tighter leading-none text-inherit">Idea to itinerary —
+            <br><span class="text-sky-400 italic">in minutes.</span></h1>
+        <p class="text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed mb-12">Our AI analyzes your
+            budget and preferences to craft a personalized travel plan that actually works for you.</p>
+        <a href="#steps" class="btn-main px-12 py-5 text-xl inline-block">See How It Works</a>
+    </header>
+
+    <section id="steps" class="max-w-5xl mx-auto px-10 space-y-24 pb-32 relative section-line">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+            <div class="iphone-glass p-10 rounded-[40px] relative z-10">
+                <div class="step-badge">1</div>
+                <h3 class="text-3xl font-black mb-4">Tell Us Your Vibe</h3>
+                <p class="text-slate-500 font-medium leading-relaxed mb-6">Input your destination and define your style.
+                    Whether you're an adventure seeker or a budget-conscious student, we listen.</p>
+                <div class="p-5 iphone-glass rounded-2xl text-sm space-y-3 font-bold border-white/20">
+                    <div class="flex justify-between"><span>📍 Location</span><span class="text-sky-500">Darjeeling,
+                            West Bengal</span></div>
+                    <div class="flex justify-between"><span>💰 Budget</span><span class="text-sky-500">Rs 5000</span>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center md:text-left opacity-20"><i class="fa-solid fa-map-location-dot text-9xl"></i></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+            <div class="order-2 md:order-1 text-center md:text-right opacity-20"><i
+                    class="fa-solid fa-microchip text-9xl"></i></div>
+            <div class="iphone-glass p-10 rounded-[40px] relative z-10 order-1 md:order-2">
+                <div class="step-badge">2</div>
+                <h3 class="text-3xl font-black mb-4">AI Optimization</h3>
+                <p class="text-slate-500 font-medium leading-relaxed">Our AI balances cost and experience. It searches
+                    for student-friendly pricing and clusters activities to save you on transport.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+            <div class="iphone-glass p-10 rounded-[40px] relative z-10">
+                <div class="step-badge">3</div>
+                <h3 class="text-3xl font-black mb-4">Smart Generation</h3>
+                <p class="text-slate-500 font-medium leading-relaxed">Receive a complete morning-to-night breakdown.
+                    Walkable routes, budget-aware food choices, and optimized timing.</p>
+            </div>
+            <div class="iphone-glass p-8 bg-sky-400/5 border-sky-400/20 rounded-[32px] transform rotate-2">
+                <div class="flex items-center gap-2 mb-6">
+                    <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+                    <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+                    <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+                </div>
+                <div class="text-sm font-black text-inherit mb-2">Day 2: Cultural Immersion</div>
+                <div class="w-full h-3 bg-sky-400/20 rounded-full mb-4"></div>
+                <div class="w-2/3 h-3 bg-sky-400/10 rounded-full"></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="iphone-glass py-32 border-y border-white/10">
+        <div class="max-w-7xl mx-auto px-10">
+            <div class="text-center mb-20">
+                <h2 class="text-5xl font-black tracking-tight mb-4">Why Journey AI?</h2>
+                <p class="text-slate-500 font-bold">Built for travelers who value experiences over tourist traps.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="p-8 hover:translate-y-[-5px] transition-transform">
+                    <i class="fa-solid fa-graduation-cap text-sky-400 text-4xl mb-6"></i>
+                    <h4 class="text-2xl font-black mb-3">Student-First</h4>
+                    <p class="text-slate-500 font-medium leading-relaxed">We prioritize student IDs, free local gems,
+                        and discounts that actually help you save.</p>
+                </div>
+                <div class="p-8 hover:translate-y-[-5px] transition-transform">
+                    <i class="fa-solid fa-shield-halved text-sky-400 text-4xl mb-6"></i>
+                    <h4 class="text-2xl font-black mb-3">No Bias</h4>
+                    <p class="text-slate-500 font-medium leading-relaxed">We don't take commissions. Our AI suggests
+                        spots because they're great, not because they paid us.</p>
+                </div>
+                <div class="p-8 hover:translate-y-[-5px] transition-transform">
+                    <i class="fa-solid fa-leaf text-sky-400 text-4xl mb-6"></i>
+                    <h4 class="text-2xl font-black mb-3">Local Impact</h4>
+                    <p class="text-slate-500 font-medium leading-relaxed">We prioritize local eateries and public
+                        transport to support the communities you visit.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="max-w-4xl mx-auto px-10 py-32 text-center">
+        <div class="iphone-glass p-16 rounded-[48px] border-sky-400/20 shadow-2xl shadow-sky-400/10">
+            <h2 class="text-5xl font-black mb-6">Ready to plan smarter?</h2>
+            <p class="text-slate-500 font-bold mb-10">Stop overthinking. Start exploring with your own AI assistant.</p>
+            <a href="create-trip.html" class="btn-main px-12 py-5 text-xl inline-block">Create My Free Trip</a>
+        </div>
+    </footer>
+
+    <script>
+        function updateSpotlight(e) {
+            document.body.style.setProperty('--x', e.clientX + 'px');
+            document.body.style.setProperty('--y', e.clientY + 'px');
+        }
+
+    </script>
+    <script src="navbar.js"></script>
+    <script src="dynamic-bg.js"></script>
+</body>
+
+</html>

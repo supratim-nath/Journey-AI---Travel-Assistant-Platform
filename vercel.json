@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "functions": {
+    "src/app.js": {
+      "maxDuration": 15
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/src/app.js"
+    },
+    {
+      "source": "/auth/(.*)",
+      "destination": "/src/app.js"
+    },
+    {
+      "source": "/chat",
+      "destination": "/src/app.js"
+    },
+    {
+      "source": "/suggestions",
+      "destination": "/src/app.js"
+    },
+    {
+      "source": "/generate-itinerary",
+      "destination": "/html files/create-trip.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/html files/$1"
+    }
+  ]
+}

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Plan your dream adventure with Journey AI. Custom multi-day itineraries for Leh, Udaipur, Munnar, and more. Optimized for local food, culture, and adventure.">
+    <meta name="keywords" content="Plan Trip, India Itinerary, AI Travel Planner, Custom Travel Guide, India Tourism">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Craft Your Journey — AI-Powered Trip Planning">
+    <meta property="og:description" content="Create a 100% personalized travel plan for any Indian destination in seconds. Adventure, Food, and Hidden Gems included.">
+    <meta property="og:image" content="assets/logo.jpg">
+
+    <title>Craft Your Journey — AI-Powered Trip Planning</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+    <script>
+        // Apply theme immediately to prevent flashing
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <style>
+        :root {
+            --primary: #38BDF8;
+            --bg: #F8FAFC;
+            --text: #0F172A;
+            --glass: rgba(255, 255, 255, 0.55);
+            --border: rgba(255, 255, 255, 0.45);
+            --input-bg: rgba(0, 0, 0, 0.03);
+        }
+
+        [data-theme='dark'] {
+            --bg: #0F172A;
+            --text: #F8FAFC;
+            --glass: rgba(15, 23, 42, 0.45);
+            --border: rgba(255, 255, 255, 0.08);
+            --input-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        #spotlight {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(56, 189, 248, 0.12) 0%, transparent 40%);
+            z-index: 1;
+        }
+
+        .iphone-glass {
+            background: var(--glass);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .input-glass {
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            color: inherit;
+        }
+
+        .input-glass:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1);
+        }
+
+        .chip-btn {
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: inherit;
+            opacity: 0.7;
+        }
+
+        .chip-btn:hover {
+            opacity: 1;
+            transform: translateY(-2px);
+            border-color: var(--primary);
+            box-shadow: 0 6px 15px rgba(56, 189, 248, 0.2);
+        }
+
+        .chip-btn.active {
+            background: linear-gradient(135deg, #38BDF8 0%, #0EA5E9 100%);
+            color: white;
+            opacity: 1;
+            box-shadow: 0 8px 25px rgba(56, 189, 248, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            border-color: #38BDF8;
+            transform: scale(1.05) translateY(-2px);
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .iphone-btn {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        /* Micro-interactions: Fade Up Animation */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-up {
+            opacity: 0;
+            animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .stagger-1 {
+            animation-delay: 100ms;
+        }
+
+        .stagger-2 {
+            animation-delay: 200ms;
+        }
+
+        .stagger-3 {
+            animation-delay: 300ms;
+        }
+        /* AI Loading Overlay */
+        #aiLoadingOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #aiLoadingOverlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .ai-glow-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.6));
+            margin-bottom: 2rem;
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+    </style>
+</head>
+
+<body onmousemove="updateSpotlight(event)">
+    <div id="spotlight"></div>
+
+    <!-- AI Loading Overlay -->
+    <div id="aiLoadingOverlay">
+        <div class="ai-glow-icon animate-bounce">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <div class="text-center px-6">
+            <h3 class="text-white text-2xl font-black mb-4">Waking up our AI Scout...</h3>
+            <p class="text-sky-400 font-bold max-w-sm mx-auto leading-relaxed text-sm mb-6">Please wait a moment while Ritu prepares your perfect itinerary. This can take up to a minute on the first launch.</p>
+        </div>
+    </div>
+
+    <nav></nav>
+
+    <main class="pt-36 md:pt-40 pb-20 px-5 md:px-6 max-w-4xl mx-auto relative z-10">
+        <div class="mb-8 md:mb-10 text-center animate-fade-up stagger-1">
+            <h2 class="text-3xl md:text-4xl leading-tight font-black tracking-tight">Generate Your Itinerary</h2>
+            <p class="text-slate-500 font-bold mt-2 italic">Optimized for Indian Rupee (₹) and local travel routes.</p>
+        </div>
+
+        <div class="iphone-glass p-6 md:p-12 rounded-[32px] md:rounded-[48px] space-y-10 md:space-y-12 animate-fade-up stagger-2">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div class="space-y-4">
+                    <label class="block text-xs font-black opacity-40 uppercase tracking-[0.2em]">Where do you want to
+                        go?</label>
+                    <input type="text" id="destInput" placeholder="e.g. Udaipur, Leh, or Munnar"
+                        class="input-glass w-full p-5 font-bold outline-none shadow-sm">
+                </div>
+
+                <div class="space-y-4">
+                    <label class="block text-xs font-black opacity-40 uppercase tracking-[0.2em]">Number of Days</label>
+                    <input type="number" id="daysInput" placeholder="e.g. 7" min="1" max="30"
+                        class="input-glass w-full p-5 font-bold outline-none shadow-sm">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div class="space-y-4">
+                    <label class="block text-xs font-black opacity-40 uppercase tracking-[0.2em]">Traveler Type</label>
+                    <div class="grid grid-cols-2 gap-2" id="travelerGroup">
+                        <button onclick="toggleActive(this, 'travelerGroup')"
+                            class="chip-btn py-3 rounded-2xl text-xs font-bold active">Solo</button>
+                        <button onclick="toggleActive(this, 'travelerGroup')"
+                            class="chip-btn py-3 rounded-2xl text-xs font-bold">Couple</button>
+                        <button onclick="toggleActive(this, 'travelerGroup')"
+                            class="chip-btn py-3 rounded-2xl text-xs font-bold">Family</button>
+                        <button onclick="toggleActive(this, 'travelerGroup')"
+                            class="chip-btn py-3 rounded-2xl text-xs font-bold">Friends</button>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <label class="block text-xs font-black opacity-40 uppercase tracking-[0.2em]">Budget Level (INR
+                        ₹)</label>
+                    <div class="grid grid-cols-3 gap-2" id="budgetGroup">
+                        <button onclick="toggleActive(this, 'budgetGroup')"
+                            class="chip-btn py-3 rounded-2xl text-[10px] font-black uppercase">Economy</button>
+                        <button onclick="toggleActive(this, 'budgetGroup')"
+                            class="chip-btn py-3 rounded-2xl text-[10px] font-black uppercase active">Standard</button>
+                        <button onclick="toggleActive(this, 'budgetGroup')"
+                            class="chip-btn py-3 rounded-2xl text-[10px] font-black uppercase">Luxury</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <label class="block text-xs font-black opacity-40 uppercase tracking-[0.2em]">Main Interests</label>
+                <div class="flex flex-wrap gap-3" id="interestGroup">
+                    <button onclick="this.classList.toggle('active')"
+                        class="chip-btn px-6 py-3 rounded-2xl text-xs font-bold active">Culture</button>
+                    <button onclick="this.classList.toggle('active')"
+                        class="chip-btn px-6 py-3 rounded-2xl text-xs font-bold">Adventure</button>
+                    <button onclick="this.classList.toggle('active')"
+                        class="chip-btn px-6 py-3 rounded-2xl text-xs font-bold">Foodie</button>
+                    <button onclick="this.classList.toggle('active')"
+                        class="chip-btn px-6 py-3 rounded-2xl text-xs font-bold">Relaxation</button>
+                </div>
+            </div>
+
+            <button id="submitBtn" onclick="generateItinerary()"
+                class="w-full bg-slate-900 dark:bg-sky-500 text-white dark:text-slate-950 py-6 rounded-3xl font-black text-sm uppercase tracking-[0.3em] shadow-2xl transition-all duration-300 transform active:scale-[0.98] flex items-center justify-center gap-4">
+                <span id="btnText">Create My Indian Trip</span>
+                <div id="btnSpinner" class="spinner"></div>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        function updateSpotlight(e) {
+            document.body.style.setProperty('--x', e.clientX + 'px');
+            document.body.style.setProperty('--y', e.clientY + 'px');
+        }
+
+        function toggleActive(element, groupID) {
+            const buttons = document.querySelectorAll(`#${groupID} button`);
+            buttons.forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        async function generateItinerary() {
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('btnSpinner');
+
+            // Get active values from the glassmorphism UI buttons
+            const budgetBtn = document.querySelector('#budgetGroup button.active');
+            const interestBtns = document.querySelectorAll('#interestGroup button.active');
+
+            // Convert budget label to a Number so MongoDB accepts it later during save
+            let numericBudget = 15000; // default Standard
+            if (budgetBtn) {
+                const bText = budgetBtn.innerText.toLowerCase();
+                if (bText.includes('economy')) numericBudget = 5000;
+                else if (bText.includes('luxury')) numericBudget = 50000;
+            }
+
+            // Collect traveler type selection
+            const travelerBtn = document.querySelector('#travelerGroup button.active');
+            const travelerType = travelerBtn ? travelerBtn.innerText : 'Solo';
+
+            // Collect data from your inputs
+            const destinationVal = (document.getElementById('destInput').value || '').trim();
+            const daysVal = parseInt(document.getElementById('daysInput').value, 10);
+
+            if (!destinationVal) {
+                showNotification("Please enter a destination to plan your journey.", "error");
+                return;
+            }
+            if (destinationVal.length < 2) {
+                showNotification("Destination must be at least 2 characters.", "error");
+                return;
+            }
+            if (destinationVal.length > 100) {
+                showNotification("Destination must be under 100 characters.", "error");
+                return;
+            }
+            if (isNaN(daysVal) || daysVal < 1 || daysVal > 30) {
+                showNotification("Please enter a travel duration between 1 and 30 days.", "error");
+                return;
+            }
+
+            const tripData = {
+                destination: destinationVal,
+                days: daysVal,
+                budget: numericBudget,
+                traveler_type: travelerType,
+                vibe: Array.from(interestBtns).map(b => b.innerText).join(', ') || 'Culture'
+            };
+
+            // UI Loading State
+            btn.disabled = true;
+            btnText.innerText = "Consulting AI...";
+            spinner.style.display = "block";
+            
+            // Show AI Scout Overlay
+            const overlay = document.getElementById('aiLoadingOverlay');
+            if (overlay) {
+                overlay.classList.add('active');
+            }
+
+            try {
+                // Use the generate-preview endpoint which returns data without saving it
+                const response = await fetch('/api/trips/generate-preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(tripData)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    // SUCCESS: Store the generated data in sessionStorage
+                    sessionStorage.setItem('tempTrip', JSON.stringify(result.data));
+                    btnText.innerText = "Redirecting...";
+                    window.location.href = `itinerary.html`;
+                } else {
+                    showNotification(result.message || "Failed to generate itinerary.", 'error');
+                    resetButton();
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+                showNotification("Server connection failed.", 'error');
+                resetButton();
+            }
+        }
+
+        function resetButton() {
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('btnSpinner');
+            const overlay = document.getElementById('aiLoadingOverlay');
+            
+            btn.disabled = false;
+            btnText.innerText = "Create My Indian Trip";
+            spinner.style.display = "none";
+            overlay.classList.remove('active');
+        }
+
+        function showNotification(message, type = 'success') {
+            let container = document.getElementById('notificationContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notificationContainer';
+                container.className = 'fixed top-24 right-6 z-[1100] flex flex-col gap-3 pointer-events-none';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            let borderCol = 'border-emerald-500/30';
+            let icon = '<i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>';
+            let label = 'Success';
+            if (type === 'error') { borderCol = 'border-rose-500/30'; icon = '<i class="fa-solid fa-circle-xmark text-rose-500 text-lg"></i>'; label = 'Error'; }
+            else if (type === 'info') { borderCol = 'border-sky-500/30'; icon = '<i class="fa-solid fa-circle-info text-sky-500 text-lg"></i>'; label = 'Info'; }
+            toast.className = `pointer-events-auto bg-white/95 dark:bg-[#1e293b]/95 backdrop-blur-xl border ${borderCol} text-slate-800 dark:text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 max-w-sm transform translate-x-[120%] transition-all duration-300`;
+            toast.innerHTML = `${icon}<div class="flex-1"><p class="text-xs font-black uppercase tracking-wider">${label}</p><p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">${message}</p></div>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.transform = 'translateX(0)'; }, 50);
+            setTimeout(() => { toast.style.transform = 'translateX(120%)'; setTimeout(() => toast.remove(), 300); }, 4000);
+        }
+
+        // Auto-populate destination from URL query parameter
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const dest = urlParams.get('dest');
+            if (dest) {
+                document.getElementById('destInput').value = dest;
+            }
+        });
+    </script>
+    <script src="navbar.js"></script>
+    <script src="dynamic-bg.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Journey AI: Your personalized AI-powered travel planner for exploring India. Plan, customize, and save your next adventure with our expert AI Scout.">
+    <meta name="keywords" content="Travel Planner, AI Trip Planner, India Travel, Adventure Planner, Itinerary Generator, Journey AI, AI Travel Scout">
+    <meta name="author" content="Abhidoesntcode">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://journeyai.vercel.app/">
+    <meta property="og:title" content="Journey AI — Your Personal AI Travel Scout">
+    <meta property="og:description" content="Plan your perfect Indian adventure in seconds with Journey AI. Custom itineraries, local food tips, and hidden gems.">
+    <meta property="og:image" content="assets/logo.jpg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://journeyai.vercel.app/">
+    <meta property="twitter:title" content="Journey AI — Your Personal AI Travel Scout">
+    <meta property="twitter:description" content="Plan your perfect Indian adventure in seconds with Journey AI. Custom itineraries, local food tips, and hidden gems.">
+    <meta property="twitter:image" content="assets/logo.jpg">
+
+    <title>Journey AI — Your Personalized AI Travel Scout</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #38BDF8;
+            --bg: #F8FAFC;
+            --text: #0F172A;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        [data-theme='dark'] {
+            --bg: #0F172A;
+            --text: #F8FAFC;
+            --glass-bg: rgba(15, 23, 42, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #000;
+            color: #fff;
+            height: 100%;
+        }
+
+        /* ─── NAV ─── */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            padding: 20px 32px;
+        }
+
+        .nav-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 9999px;
+            padding: 10px 16px 10px 24px;
+            box-shadow: 0 8px 32px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: #fff;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-logo span {
+            color: #38BDF8;
+        }
+
+        .iphone-btn {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            color: #fff;
+        }
+
+        .iphone-btn:hover {
+            background: rgba(255, 255, 255, 0.22);
+            transform: scale(1.04);
+        }
+
+        .profile-menu {
+            display: none;
+            position: absolute;
+            top: 110%;
+            right: 0;
+            width: 220px;
+            z-index: 300;
+        }
+
+        .profile-menu.active {
+            display: block;
+            animation: slideDown 0.25s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ─── SLIDE SECTIONS ─── */
+        .slide {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            scroll-snap-align: start;
+            overflow: hidden;
+        }
+
+        /* Background layers for parallax */
+        .slide-bg {
+            position: absolute;
+            inset: -8%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.08s linear;
+            will-change: transform;
+        }
+
+        .slide-bg-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top,
+                    rgba(0, 0, 0, 0.85) 0%,
+                    rgba(0, 0, 0, 0.35) 50%,
+                    rgba(0, 0, 0, 0.15) 100%);
+            z-index: 2;
+        }
+
+        /* Color tint overlay unique per slide */
+        .slide-tint {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            opacity: 0;
+            mix-blend-mode: color;
+            transition: opacity 0.8s ease;
+        }
+
+        .mobile-only {
+            display: none;
+        }
+
+        /* ─── SLIDE CONTENT ─── */
+        .slide-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            padding: 60px 80px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .slide-label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: #38BDF8;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease 0.1s, transform 0.6s ease 0.1s;
+        }
+
+        .slide-title {
+            font-size: clamp(3rem, 7vw, 6rem);
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -2px;
+            color: #fff;
+            margin: 12px 0 6px;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.7s ease 0.2s, transform 0.7s ease 0.2s;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6);
+        }
+
+        .slide-subtitle {
+            font-size: 1rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.85);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease 0.35s, transform 0.6s ease 0.35s;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+        }
+
+        .slide-cta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 16px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease 0.45s, transform 0.6s ease 0.45s;
+        }
+
+        .slide-cta a {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #38BDF8;
+            color: #000;
+            font-weight: 800;
+            font-size: 0.9rem;
+            padding: 14px 28px;
+            border-radius: 9999px;
+            text-decoration: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
+        }
+
+        .slide-cta a:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 60px rgba(56, 189, 248, 0.6);
+        }
+
+        .slide-cta .explore-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.85rem;
+            padding: 12px 24px;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: none;
+        }
+
+        .slide-cta .explore-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.04);
+            box-shadow: none;
+        }
+
+        /* Activate animations when slide is active */
+        .slide.active .slide-label,
+        .slide.active .slide-title,
+        .slide.active .slide-subtitle,
+        .slide.active .slide-cta {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .slide.active .slide-tint {
+            opacity: 0.25;
+        }
+
+        /* ─── TOP BAR: stats strip ─── */
+        .slide-top-bar {
+            position: absolute;
+            top: 110px;
+            left: 80px;
+            right: 80px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            opacity: 0;
+            transform: translateY(-16px);
+            transition: opacity 0.6s ease 0.5s, transform 0.6s ease 0.5s;
+        }
+
+        .slide.active .slide-top-bar {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .slide-index-badge {
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.15em;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .slide-tags {
+            display: flex;
+            gap: 8px;
+        }
+
+        .slide-tag {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 9999px;
+            padding: 5px 14px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* ─── PROGRESS DOTS ─── */
+        #progressDots {
+            position: fixed;
+            right: 32px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .dot::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 9999px;
+            border: 1.5px solid transparent;
+            transition: border-color 0.4s ease;
+        }
+
+        .dot.active {
+            background: #38BDF8;
+            height: 28px;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
+        }
+
+        .dot.active::after {
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+
+        .dot:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(1.3);
+        }
+
+        /* ─── SCROLL HINT ─── */
+        #scrollHint {
+            position: fixed;
+            bottom: 36px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transition: opacity 0.4s ease;
+        }
+
+        #scrollHint span {
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .scroll-wheel {
+            width: 24px;
+            height: 38px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            padding-top: 6px;
+        }
+
+        .scroll-wheel::before {
+            content: '';
+            width: 4px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 9999px;
+            animation: wheelScroll 1.8s ease infinite;
+        }
+
+        @keyframes wheelScroll {
+            0% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+
+            80% {
+                transform: translateY(12px);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 0;
+            }
+        }
+
+        /* ─── HERO SLIDE SPECIAL ─── */
+        .hero-text-block {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -54%);
+            text-align: center;
+            z-index: 11;
+            pointer-events: none;
+            width: 90%;
+            max-width: 900px;
+        }
+
+        .hero-text-block h1 {
+            font-size: clamp(3.5rem, 9vw, 8rem);
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -3px;
+            color: #fff;
+            opacity: 0;
+            transform: translateY(30px) scale(0.97);
+            transition: opacity 0.8s ease 0.1s, transform 0.8s ease 0.1s;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 2px 5px rgba(0, 0, 0, 0.7);
+        }
+
+        .hero-text-block h1 span {
+            color: #38BDF8;
+        }
+
+        .hero-text-block p {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.95);
+            margin-top: 16px;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease 0.4s, transform 0.6s ease 0.4s;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.9);
+        }
+
+        .slide.active .hero-text-block h1,
+        .slide.active .hero-text-block p {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .hero-cta-strip {
+            position: absolute;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 11;
+            display: flex;
+            gap: 16px;
+            opacity: 0;
+            transition: all 0.6s ease 0.6s;
+            white-space: nowrap;
+            pointer-events: auto;
+        }
+
+        .hero-cta-strip a {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #38BDF8;
+            color: #000;
+            font-weight: 800;
+            font-size: 0.95rem;
+            padding: 16px 36px;
+            border-radius: 9999px;
+            text-decoration: none;
+            box-shadow: 0 0 40px rgba(56, 189, 248, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .hero-cta-strip a:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 60px rgba(56, 189, 248, 0.7);
+        }
+
+        #scrollHint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+
+        #scrollHint span {
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .scroll-pulse {
+            animation: scrollPulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes scrollPulse {
+
+            0%,
+            100% {
+                opacity: 0.4;
+                transform: scaleY(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scaleY(1.1);
+            }
+        }
+
+        .slide.active .hero-cta-strip {
+            opacity: 1;
+        }
+
+        /* ─── HORIZONTAL TICKER ─── */
+        .slide-ticker {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 48px;
+            background: rgba(56, 189, 248, 0.15);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(56, 189, 248, 0.3);
+            z-index: 20;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .ticker-track {
+            display: flex;
+            gap: 60px;
+            white-space: nowrap;
+            animation: tickerRoll 25s linear infinite;
+        }
+
+        .ticker-track span {
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(56, 189, 248, 0.9);
+        }
+
+        @keyframes tickerRoll {
+            from {
+                transform: translateX(0);
+            }
+
+            to {
+                transform: translateX(-50%);
+            }
+        }
+
+        /* ─── CINEMATIC ZOOM EFFECT ─── */
+        .slide .slide-bg {
+            transform: scale(1.08);
+            transition: transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .slide.active .slide-bg {
+            transform: scale(1);
+        }
+
+        /* ─── GLASS PILL ─── */
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 9999px;
+            padding: 8px 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.85);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .glass-pill:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* ─── CURSOR GLOW ─── */
+        #cursorGlow {
+            position: fixed;
+            pointer-events: none;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            transition: left 0.12s ease, top 0.12s ease;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav {
+                padding: 12px 16px;
+            }
+
+            .nav-inner {
+                padding: 8px 12px 8px 20px;
+                border-radius: 24px;
+            }
+
+            .nav-logo {
+                font-size: 1.1rem;
+            }
+
+            .slide-content {
+                padding: 30px 24px 80px;
+                /* Leave space for ticker */
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+            }
+
+            .slide-title {
+                font-size: 2.5rem;
+                letter-spacing: -1px;
+            }
+
+            .slide-top-bar {
+                left: 24px;
+                right: 24px;
+                top: 90px;
+            }
+
+            .hero-text-block {
+                width: 90%;
+                top: 40%;
+                /* Sit slightly higher */
+            }
+
+            .hero-text-block h1 {
+                font-size: 2.8rem;
+                line-height: 1.1;
+                letter-spacing: -1px;
+                margin-bottom: 24px;
+            }
+
+            .hero-text-block p {
+                font-size: 1rem;
+                line-height: 1.6;
+                padding: 0 20px;
+            }
+
+            .mobile-only {
+                display: block;
+            }
+
+            .hero-cta-strip {
+                bottom: 80px;
+                flex-direction: column;
+                gap: 12px;
+                width: 100%;
+                padding: 0 40px;
+            }
+
+            .hero-cta-strip a,
+            .hero-cta-strip .glass-pill {
+                width: 100%;
+                justify-content: center;
+                padding: 14px 20px;
+            }
+
+            #scrollHint {
+                display: none !important;
+            }
+
+            #progressDots {
+                right: 12px;
+                gap: 6px;
+            }
+
+            .dot.active {
+                height: 20px;
+            }
+        }
+
+        /* ─── GLASS LOGIN MODAL ─── */
+        #loginModal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.4);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #loginModal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .login-glass-panel {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            transform: translateY(30px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(25px) saturate(200%);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+        }
+
+        /* Subtle glow behind the panel */
+        .login-glass-panel::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            left: -50px;
+            width: 150px;
+            height: 150px;
+            background: #38BDF8;
+            filter: blur(80px);
+            opacity: 0.5;
+            z-index: -1;
+            border-radius: 50%;
+        }
+
+        #loginModal.active .login-glass-panel {
+            transform: translateY(0) scale(1);
+        }
+
+        .login-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .login-close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        .login-header h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+
+        .login-header p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+            margin-bottom: 30px;
+        }
+
+        .login-input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .login-input-group i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 1rem;
+        }
+
+        .login-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 14px 16px 14px 44px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .login-input:focus {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: #38BDF8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+        }
+
+        .login-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .login-btn-submit {
+            width: 100%;
+            background: #38BDF8;
+            color: #000;
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 1.05rem;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+            margin-top: 10px;
+        }
+
+        .login-btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 25px rgba(56, 189, 248, 0.6);
+        }
+
+        .login-footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .login-footer a {
+            color: #38BDF8;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ─── GOOGLE LOGIN BUTTON ─── */
+        .login-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 24px 0;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .login-divider::before {
+            margin-right: 12px;
+        }
+
+        .login-divider::after {
+            margin-left: 12px;
+        }
+
+        .btn-google {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .btn-google:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-google img {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* ─── Premium Review Cards UI/UX ─── */
+        .review-card {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-left: 4px solid #38BDF8;
+            border-radius: 20px;
+            padding: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .review-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .review-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            border-color: rgba(56, 189, 248, 0.3);
+            box-shadow: 0 20px 40px -20px rgba(56, 189, 248, 0.25);
+        }
+        
+        .review-card:hover::before {
+            opacity: 1;
+        }
+
+        .review-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .review-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex-grow: 1;
+            width: 100%;
+        }
+        
+        .review-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 8px;
+        }
+    </style>
+    <script>
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+
+<body>
+    <!-- Cursor glow -->
+    <div id="cursorGlow"></div>
+
+    <!-- ─── NAVBAR ─── -->
+    <nav></nav>
+
+    <!-- ─── PROGRESS DOTS ─── -->
+    <div id="progressDots"></div>
+
+    <!-- Scroll hint is now inside slide-0 for better visibility -->
+
+    <!-- ═══════════════════════════════════ SLIDES ═══════════════════════════════════ -->
+
+    <!-- SLIDE 0: HERO -->
+    <section class="slide" id="slide-0" data-index="0">
+        <!-- India map canvas replaces static background image -->
+        <canvas id="indiaMapCanvas"
+            style="position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;"></canvas>
+
+        <!-- Container for dynamic city scenery popups over the globe -->
+        <div id="globePopups" style="position:absolute;inset:0;pointer-events:none;z-index:5;overflow:hidden;"></div>
+
+        <!-- Hero text + CTAs in one unified block -->
+        <div class="hero-text-block">
+            <h1>Your next<br>story<br><span>starts here.</span></h1>
+            <p>10 breathtaking destinations. <br class="mobile-only">Infinite possibilities.</p>
+            <!-- CTAs inline below text -->
+            <div class="hero-cta-strip" style="position:relative;bottom:auto;left:auto;transform:none;margin-top:36px;justify-content:center;">
+                <a href="create-trip.html">
+                    <i class="fa-solid fa-route"></i> Plan New Trip
+                </a>
+                <button class="glass-pill" onclick="scrollToSlide(1)">
+                    <i class="fa-solid fa-arrow-down"></i> Explore Places
+                </button>
+            </div>
+        </div>
+
+        <!-- Scroll hint — visible at bottom of hero -->
+        <div id="scrollHint">
+            <span>Scroll to explore</span>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                <div class="scroll-pulse"
+                    style="width:1.5px;height:28px;background:linear-gradient(to bottom,rgba(56,189,248,0.9),transparent);">
+                </div>
+                <i class="fa-solid fa-chevron-down scroll-pulse"
+                    style="color:rgba(56,189,248,0.85);font-size:0.65rem;animation-delay: 0.2s;"></i>
+            </div>
+        </div>
+
+        <!-- Ticker -->
+        <div class="slide-ticker">
+            <div class="ticker-track" id="tickerTrack"></div>
+        </div>
+    </section>
+
+    <!-- SLIDES 1–10: Destinations (generated by JS) -->
+    <div id="destinationSlides"></div>
+
+    <!-- ─── SCRIPTS ─── -->
+    <script>
+        // ── DATA ──
+        const destinations = [
+            {
+                img: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1920",
+                loc: "Manali, Himachal Pradesh",
+                short: "Manali",
+                label: "Snow & Serenity",
+                tags: ["Adventure", "Mountains", "Winter"],
+                tint: "#60A5FA",
+                desc: "Valley of Gods nestled in the Himalayas"
+            },
+            {
+                img: "https://images.unsplash.com/photo-1593693397690-362cb9666fc2?w=1920",
+                loc: "Alleppey, Kerala",
+                short: "Alleppey",
+                label: "Backwater Bliss",
+                tags: ["Houseboat", "Scenic", "Peaceful"],
+                tint: "#34D399",
+                desc: "Drift through emerald canals on a houseboat"
+            },
+            {
+                img: "https://images.unsplash.com/photo-1599661046289-e31897846e41?w=1920",
+                loc: "Jaipur, Rajasthan",
+                short: "Jaipur",
+                label: "The Pink City",
+                tags: ["Heritage", "Royalty", "Culture"],
+                tint: "#F472B6",
+                desc: "Royal palaces, forts and bazaars of gold"
+            },
+            {
+                img: "https://images.unsplash.com/photo-1627664819818-e147d6221422?w=1920",
+                loc: "Hampi, Karnataka",
+                short: "Hampi",
+                label: "Ruins of an Empire",
+                tags: ["UNESCO", "Ancient", "Mystical"],
+                tint: "#FB923C",
+                desc: "Stones that echo a thousand-year saga"
+            },
+            {
+                img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=1920",
+                loc: "Agra, Uttar Pradesh",
+                short: "Agra",
+                label: "Icon of Love",
+                tags: ["UNESCO", "Architecture", "Iconic"],
+                tint: "#C084FC",
+                desc: "The Taj Mahal — a monument to eternal love"
+            },
+            {
+                img: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=1920",
+                loc: "Goa, India",
+                short: "Goa",
+                label: "Sun, Sand & Vibes",
+                tags: ["Beach", "Nightlife", "Chill"],
+                tint: "#FACC15",
+                desc: "Golden beaches, spice trails and warm seas"
+            },
+            {
+                img: "https://images.unsplash.com/photo-1614082242765-7c98ca0f3df3?w=1920",
+                loc: "Munnar, Kerala",
+                short: "Munnar",
+                label: "Tea Garden Heaven",
+                tags: ["Nature", "Hills", "Mist"],
+                tint: "#4ADE80",
+                desc: "Rolling carpets of green kissed by monsoon clouds"
+            },
+            {
+                img: "https://images.unsplash.com/photo-1601999109332-542b18dbec57?w=1920",
+                loc: "Varanasi, Uttar Pradesh",
+                short: "Varanasi",
+                label: "City of Light",
+                tags: ["Spiritual", "Sacred", "Ancient"],
+                tint: "#F97316",
+                desc: "Where life and eternity meet on the Ganges"
+            },
+            {
+                img: "https://images.unsplash.com/photo-1562979314-bee7453e911c?w=1920",
+                loc: "Mumbai, Maharashtra",
+                short: "Mumbai",
+                label: "Maximum City",
+                tags: ["Metropolis", "Food", "Cinema"],
+                tint: "#38BDF8",
+                desc: "A city that never sleeps, never stops dreaming"
+            },
+            {
+                img: "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?w=1920",
+                loc: "Srinagar, Kashmir",
+                short: "Srinagar",
+                label: "Paradise on Earth",
+                tags: ["Dal Lake", "Houseboats", "Mountains"],
+                tint: "#818CF8",
+                desc: "Shikara rides on mirror lakes beneath the Himalayas"
+            }
+        ];
+
+        // ── BUILD TICKER ──
+        const tickerTrack = document.getElementById('tickerTrack');
+        const tickerItems = [...destinations, ...destinations]; // double for seamless loop
+        tickerItems.forEach(d => {
+            const span = document.createElement('span');
+            span.innerHTML = `<i class="fa-solid fa-location-dot" style="opacity:0.5;margin-right:8px;"></i>${d.short} &nbsp;·`;
+            tickerTrack.appendChild(span);
+        });
+
+        // ── BUILD DESTINATION SLIDES ──
+        const container = document.getElementById('destinationSlides');
+        destinations.forEach((d, i) => {
+            const slideIndex = i + 1;
+            container.innerHTML += `
+            <section class="slide" id="slide-${slideIndex}" data-index="${slideIndex}">
+                <div class="slide-bg" id="bg-${slideIndex}"
+                    style="background-image: url('${d.img}');"
+                    data-index="${slideIndex}">
+                </div>
+                <div class="slide-bg-overlay"></div>
+                <div class="slide-tint" style="background:${d.tint};"></div>
+
+                <!-- Top bar -->
+                <div class="slide-top-bar">
+                    <span class="slide-index-badge">${String(slideIndex).padStart(2, '0')} / 10</span>
+                    <div class="slide-tags">
+                        ${d.tags.map(t => `<span class="slide-tag">${t}</span>`).join('')}
+                    </div>
+                </div>
+
+                <!-- Bottom content -->
+                <div class="slide-content">
+                    <div>
+                        <p class="slide-label">${d.label}</p>
+                        <h2 class="slide-title">${d.short}</h2>
+                        <p class="slide-subtitle">${d.desc}</p>
+                    </div>
+                    <div class="slide-cta">
+                        <a href="create-trip.html?dest=${encodeURIComponent(d.loc)}">
+                            <i class="fa-solid fa-route"></i> Plan This Trip
+                        </a>
+                        <button class="glass-pill explore-btn" onclick="scrollToSlide(${slideIndex < 10 ? slideIndex + 1 : 11})">
+                            ${slideIndex < 10 ? 'Next Destination <i class="fa-solid fa-arrow-down"></i>' : 'See Reviews <i class="fa-solid fa-arrow-down"></i>'}
+                        </button>
+                    </div>
+                </div>
+            </section>
+            `;
+        });
+
+        // ── APPEND TESTIMONIALS SLIDE ──
+        container.innerHTML += `
+        <section class="slide" id="slide-11" data-index="11">
+            <div class="slide-bg" id="bg-11"
+                style="background-image: url('https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1920');"
+                data-index="11">
+            </div>
+            <div class="slide-bg-overlay"></div>
+            <div class="slide-tint" style="background:#0EA5E9;"></div>
+
+            <!-- Top bar -->
+            <div class="slide-top-bar">
+                <span class="slide-index-badge">11 / 11</span>
+                <div class="slide-tags">
+                    <span class="slide-tag">Community</span>
+                    <span class="slide-tag">Reviews</span>
+                    <span class="slide-tag">Feedback</span>
+                </div>
+            </div>
+
+            <!-- Bottom content -->
+            <div class="slide-content flex flex-col md:flex-row justify-between items-center md:items-end w-full">
+                <div class="w-full max-w-xl">
+                    <p class="slide-label">Traveler Stories</p>
+                    <h2 class="slide-title">User Reviews</h2>
+                    <div id="testimonialContainer" class="mt-4 flex flex-col gap-3">
+                        <div class="review-card">
+                            <div class="review-avatar">
+                                <i class="fa-solid fa-user-astronaut text-sky-400"></i>
+                            </div>
+                            <div class="review-content">
+                                <div class="review-header">
+                                    <div class="flex gap-1 text-[10px] text-yellow-400">
+                                        <i class="fa-solid fa-star"></i>
+                                        <i class="fa-solid fa-star"></i>
+                                        <i class="fa-solid fa-star"></i>
+                                        <i class="fa-solid fa-star"></i>
+                                        <i class="fa-solid fa-star"></i>
+                                    </div>
+                                    <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                                        <i class="fa-solid fa-circle-check"></i> Verified Traveler
+                                    </span>
+                                </div>
+                                <p class="text-xs italic text-slate-200 mt-1 leading-relaxed">"Journey AI planned my entire roadtrip to Manali! The route optimizer saved us 2 hours of transit, and Ritu gave the best local food recommendations."</p>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span class="text-[10px] font-extrabold text-sky-400">— Rohan M.</span>
+                                    <span class="text-[9px] text-slate-400 bg-slate-800/40 px-2 py-0.5 rounded border border-white/5 font-semibold">Manali Roadtrip</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-cta mt-6 md:mt-0 flex flex-col items-center md:items-end gap-3 w-full md:w-auto">
+                    <button onclick="toggleFeedbackModal()" class="unified-btn-submit" style="width:auto; padding:14px 28px; border-radius:9999px; margin-top:0; font-weight:800; font-size:0.9rem; background:#38BDF8; color:#000; box-shadow:0 0 30px rgba(56,189,248,0.4);">
+                        <i class="fa-solid fa-comment-dots"></i> Share Your Story
+                    </button>
+                    <button class="glass-pill explore-btn" onclick="scrollToSlide(0)">
+                        Back to Start <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+        `;
+
+        // ── BUILD PROGRESS DOTS ──
+        const dotsContainer = document.getElementById('progressDots');
+        const totalSlides = 12;
+        for (let i = 0; i < totalSlides; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            dot.dataset.index = i;
+            dot.title = i === 0 ? 'Home' : (i === 11 ? 'Reviews' : destinations[i - 1].short);
+            dot.onclick = () => scrollToSlide(i);
+            dotsContainer.appendChild(dot);
+        }
+
+        function updateDots(index) {
+            document.querySelectorAll('.dot').forEach((d, i) => {
+                d.classList.toggle('active', i === index);
+            });
+        }
+
+        function scrollToSlide(index) {
+            const el = document.getElementById(`slide-${index}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ── INTERSECTION OBSERVER ──
+        let currentSlideIndex = 0;
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+                    const idx = parseInt(entry.target.dataset.index);
+                    entry.target.classList.add('active');
+                    currentSlideIndex = idx;
+                    updateDots(idx);
+
+                    // Hide scroll hint after first scroll
+                    if (idx > 0) {
+                        document.getElementById('scrollHint').style.opacity = '0';
+                        document.getElementById('scrollHint').style.pointerEvents = 'none';
+                    } else {
+                        document.getElementById('scrollHint').style.opacity = '1';
+                        document.getElementById('scrollHint').style.pointerEvents = 'auto';
+                    }
+                } else {
+                    entry.target.classList.remove('active');
+                }
+            });
+        }, { threshold: 0.5 });
+
+        document.querySelectorAll('.slide').forEach(slide => observer.observe(slide));
+
+        // ── MOUSE PARALLAX ──
+        document.addEventListener('mousemove', (e) => {
+            const xCenter = e.clientX / window.innerWidth - 0.5;
+            const yCenter = e.clientY / window.innerHeight - 0.5;
+
+            // Move active slide's background
+            const activeBg = document.querySelector(`#slide-${currentSlideIndex} .slide-bg`);
+            if (activeBg) {
+                activeBg.style.transform = `scale(1) translate(${xCenter * -18}px, ${yCenter * -18}px)`;
+            }
+
+            // Update cursor glow
+            const glow = document.getElementById('cursorGlow');
+            glow.style.left = e.clientX + 'px';
+            glow.style.top = e.clientY + 'px';
+        });
+
+        // Reset parallax when mouse leaves
+        document.addEventListener('mouseleave', () => {
+            const activeBg = document.querySelector(`#slide-${currentSlideIndex} .slide-bg`);
+            if (activeBg) activeBg.style.transform = 'scale(1) translate(0px,0px)';
+        });
+
+        // ── KEYBOARD NAVIGATION ──
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+                e.preventDefault();
+                scrollToSlide(Math.min(currentSlideIndex + 1, 11));
+            }
+            if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault();
+                scrollToSlide(Math.max(currentSlideIndex - 1, 0));
+            }
+        });
+
+        // ── LOAD DYNAMIC TESTIMONIALS ──
+        const AVATAR_ICONS = ['fa-user-astronaut', 'fa-person-hiking', 'fa-user-tie', 'fa-face-smile-wink', 'fa-user-ninja'];
+        async function loadTestimonials() {
+            const container = document.getElementById('testimonialContainer');
+            if (!container) return;
+            try {
+                const res = await fetch('/api/feedback');
+                const data = await res.json();
+                if (data.success && data.feedbacks && data.feedbacks.length > 0) {
+                    let html = '';
+                    const items = data.feedbacks.slice(0, 3);
+                    items.forEach((fb, idx) => {
+                        const userName = fb.user ? (fb.user.fullName || fb.user.displayName || fb.user.name || 'Anonymous Traveler') : 'Anonymous Traveler';
+                        const starsFilled = '<i class="fa-solid fa-star text-yellow-400"></i>'.repeat(Math.min(fb.rating || 5, 5));
+                        const starsEmpty = '<i class="fa-regular fa-star text-slate-500"></i>'.repeat(5 - Math.min(fb.rating || 5, 5));
+                        const iconClass = AVATAR_ICONS[idx % AVATAR_ICONS.length];
+                        const destination = fb.tripDestination || (fb.comment && fb.comment.split(' ').slice(-1)[0]) || 'India Trip';
+                        const comment = fb.comment ? (fb.comment.length > 120 ? fb.comment.slice(0, 120) + '…' : fb.comment) : 'Great experience!';
+                        html += `
+                            <div class="review-card">
+                                <div class="review-avatar">
+                                    <i class="fa-solid ${iconClass} text-sky-400"></i>
+                                </div>
+                                <div class="review-content">
+                                    <div class="review-header">
+                                        <div class="flex gap-0.5 text-[10px]">${starsFilled}${starsEmpty}</div>
+                                        <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                                            <i class="fa-solid fa-circle-check"></i> Verified
+                                        </span>
+                                    </div>
+                                    <p class="text-xs italic text-slate-200 mt-1 leading-relaxed">"${comment}"</p>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span class="text-[10px] font-extrabold text-sky-400">— ${userName}</span>
+                                        <span class="text-[9px] text-slate-400 bg-slate-800/40 px-2 py-0.5 rounded border border-white/5 font-semibold">${destination}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                }
+            } catch (err) {
+                console.warn('Failed to load real testimonials:', err);
+                // Silently keep default fallback review card
+            }
+        }
+
+        // ── INIT ──
+        window.onload = () => {
+            updateDots(0);
+            // Trigger active on first slide
+            document.getElementById('slide-0').classList.add('active');
+            loadTestimonials();
+        };
+    </script>
+
+    <!-- ─── GLOBE ANIMATION ─── -->
+    <script>
+        (function initGlobe() {
+            const canvas = document.getElementById('indiaMapCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            function resize() {
+                canvas.width = canvas.offsetWidth || window.innerWidth;
+                canvas.height = canvas.offsetHeight || window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            // ── GLOBE CITIES (lat/lon on sphere) ──
+            const CITIES = [
+                // Indian destinations with scenery images
+                { lat: 32.2, lon: 77.2, img: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&q=80&w=200&h=200', name: 'Manali' },
+                { lat: 9.5, lon: 76.3, img: 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&q=80&w=200&h=200', name: 'Alleppey' },
+                { lat: 26.9, lon: 75.8, img: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&q=80&w=200&h=200', name: 'Jaipur' },
+                { lat: 15.3, lon: 76.5, img: 'https://images.unsplash.com/photo-1627664819818-e147d6221422?auto=format&fit=crop&q=80&w=200&h=200', name: 'Hampi' },
+                { lat: 27.2, lon: 78.0, img: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&q=80&w=200&h=200', name: 'Agra' },
+                { lat: 15.5, lon: 73.9, img: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&q=80&w=200&h=200', name: 'Goa' },
+                { lat: 10.1, lon: 77.1, img: 'https://images.unsplash.com/photo-1614082242765-7c98ca0f3df3?auto=format&fit=crop&q=80&w=200&h=200', name: 'Munnar' },
+                { lat: 25.3, lon: 83.0, img: 'https://images.unsplash.com/photo-1601999109332-542b18dbec57?auto=format&fit=crop&q=80&w=200&h=200', name: 'Varanasi' },
+                { lat: 19.1, lon: 72.9, img: 'https://images.unsplash.com/photo-1562979314-bee7453e911c?auto=format&fit=crop&q=80&w=200&h=200', name: 'Mumbai' },
+                { lat: 34.1, lon: 74.8, img: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&q=80&w=200&h=200', name: 'Srinagar' },
+                { lat: 28.6, lon: 77.2, img: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&q=80&w=200&h=200', name: 'Delhi' },
+                { lat: 22.6, lon: 88.4, img: 'https://images.unsplash.com/photo-1558431382-27e303142255?auto=format&fit=crop&q=80&w=200&h=200', name: 'Kolkata' },
+                { lat: 13.1, lon: 80.3, img: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&q=80&w=200&h=200', name: 'Chennai' },
+                { lat: 12.9, lon: 77.6, img: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&q=80&w=200&h=200', name: 'Bengaluru' },
+            ];
+
+            // Create a mirrored version of the Indian cities on the exact opposite side of the earth 
+            // so we can keep airplanes visible 24/7 without using non-Indian content.
+            const OPPOSITE_CITIES = CITIES.map(city => ({
+                name: city.name,
+                img: city.img,
+                lat: city.lat,
+                lon: city.lon - 180
+            }));
+
+            let rotation = 0;     // longitude rotation offset (radians)
+            let particles = [];
+            let arcs = [];
+            let popups = [];      // active HTML popups { id, city, t, el }
+            const popupContainer = document.getElementById('globePopups');
+            for (let i = 0; i < 140; i++) {
+                particles.push({
+                    x: Math.random(), y: Math.random(),
+                    r: Math.random() * 1.0 + 0.15,
+                    a: Math.random() * 0.45 + 0.08,
+                    tw: Math.random() * Math.PI * 2,
+                    ts: 0.015 + Math.random() * 0.025,
+                });
+            }
+
+            // Orthographic projection of a lat/lon on the sphere
+            function project(lat, lon, cx, cy, R) {
+                const laR = lat * Math.PI / 180;
+                const loR = lon * Math.PI / 180 + rotation;
+                const x = cx + R * Math.cos(laR) * Math.sin(loR);
+                const y = cy - R * Math.sin(laR);
+                const z = Math.cos(laR) * Math.cos(loR); // >0 = front-facing
+                return { x, y, z };
+            }
+
+            // Manage exactly 2 simultaneous flight arcs
+            function maintainArcs() {
+                const hasFront = arcs.some(a => !a.isOpposite);
+                const hasBack = arcs.some(a => a.isOpposite);
+
+                if (!hasFront) {
+                    const i = Math.floor(Math.random() * CITIES.length);
+                    let j; do { j = Math.floor(Math.random() * CITIES.length); } while (j === i);
+                    arcs.push({ c1: CITIES[i], c2: CITIES[j], prog: 0, alpha: 0, phase: 'grow', hasPopup: false, isOpposite: false });
+                }
+
+                if (!hasBack) {
+                    const i = Math.floor(Math.random() * OPPOSITE_CITIES.length);
+                    let j; do { j = Math.floor(Math.random() * OPPOSITE_CITIES.length); } while (j === i);
+                    arcs.push({ c1: OPPOSITE_CITIES[i], c2: OPPOSITE_CITIES[j], prog: 0, alpha: 0, phase: 'grow', hasPopup: false, isOpposite: true });
+                }
+            }
+            maintainArcs();
+
+            // Spawn HTML popup
+            function createPopup(city) {
+                if (window.innerWidth < 768) return; // Disable on mobile to prevent clutter
+                const id = 'popup_' + Math.random().toString(36).substr(2, 9);
+                const el = document.createElement('div');
+                el.id = id;
+                el.style.position = 'absolute';
+                el.style.transform = 'translate(-50%, -100%)';
+                el.style.marginTop = '-16px'; // offset above the dot
+                el.style.opacity = '0';
+                el.style.transition = 'opacity 0.4s ease';
+                el.style.background = 'rgba(10, 22, 55, 0.85)';
+                el.style.backdropFilter = 'blur(8px)';
+                el.style.WebkitBackdropFilter = 'blur(8px)';
+                el.style.border = '1px solid rgba(56,189,248,0.4)';
+                el.style.borderRadius = '12px';
+                el.style.padding = '5px';
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.gap = '10px';
+                el.style.boxShadow = '0 8px 32px rgba(0,0,0,0.5)';
+                el.style.pointerEvents = 'none';
+
+                el.innerHTML = `
+                    <img src="${city.img}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
+                    <div style="padding-right:8px;">
+                        <span style="display:block;color:#fff;font-size:0.75rem;font-weight:700;margin-bottom:2px;">${city.name}</span>
+                        <span style="display:block;color:#38BDF8;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Just Landed</span>
+                    </div>
+                `;
+                popupContainer.appendChild(el);
+
+                // Small delay to allow CSS transition to apply to opacity
+                setTimeout(() => { el.style.opacity = '1'; }, 50);
+
+                popups.push({ id, city, t: 0, el });
+            }
+
+
+            // ── MAIN LOOP ──
+            let last = 0;
+            function draw(ts) {
+                const dt = Math.min(ts - last, 50);
+                last = ts;
+                rotation += dt * 0.00008; // geographically accurate left-to-right auto-spin
+
+
+                const W = canvas.width, H = canvas.height;
+                ctx.clearRect(0, 0, W, H);
+
+                // 1 ─ Deep space background
+                const bg = ctx.createRadialGradient(W * 0.5, H * 0.4, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.8);
+                bg.addColorStop(0, '#0e1f45');
+                bg.addColorStop(0.5, '#070f26');
+                bg.addColorStop(1, '#020810');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, W, H);
+
+                // 2 ─ Stars
+                particles.forEach(p => {
+                    p.tw += p.ts * dt * 0.016;
+                    const a = p.a * (0.55 + 0.45 * Math.sin(p.tw));
+                    ctx.beginPath();
+                    ctx.arc(p.x * W, p.y * H, p.r, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(210,228,255,${a})`;
+                    ctx.fill();
+                });
+
+                // 3 ─ Globe setup
+                const isMobile = W < 768;
+                const cx = W * 0.5;
+                const cy = isMobile ? H * 0.55 : H * 0.5; // Move down on mobile
+                const R = Math.min(W, H) * (isMobile ? 0.38 : 0.36); // Slightly bigger relative to smaller screen, but moved down
+
+                // 3a. Outer atmosphere glow
+                const atmosGrad = ctx.createRadialGradient(cx, cy, R * 0.88, cx, cy, R * 1.35);
+                atmosGrad.addColorStop(0, 'rgba(56,189,248,0.12)');
+                atmosGrad.addColorStop(0.5, 'rgba(56,189,248,0.04)');
+                atmosGrad.addColorStop(1, 'rgba(56,189,248,0)');
+                ctx.beginPath();
+                ctx.arc(cx, cy, R * 1.35, 0, Math.PI * 2);
+                ctx.fillStyle = atmosGrad;
+                ctx.fill();
+
+                // 3b. Globe sphere fill (dark side on right)
+                const sphereGrad = ctx.createRadialGradient(
+                    cx - R * 0.28, cy - R * 0.22, R * 0.05,
+                    cx, cy, R
+                );
+                sphereGrad.addColorStop(0, 'rgba(28, 55, 105, 0.62)');
+                sphereGrad.addColorStop(0.5, 'rgba(10, 22, 55,  0.72)');
+                sphereGrad.addColorStop(1, 'rgba(2,  8,  20,  0.90)');
+                ctx.beginPath();
+                ctx.arc(cx, cy, R, 0, Math.PI * 2);
+                ctx.fillStyle = sphereGrad;
+                ctx.fill();
+
+                // 3c. Globe border
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(cx, cy, R, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(56,189,248,0.35)';
+                ctx.lineWidth = 1.5;
+                ctx.shadowColor = '#38BDF8';
+                ctx.shadowBlur = 22;
+                ctx.stroke();
+                ctx.restore();
+
+                // 3d. Clipped grid lines inside the globe
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(cx, cy, R - 1, 0, Math.PI * 2);
+                ctx.clip();
+
+                // Latitude circles (horizontal ellipses)
+                ctx.strokeStyle = 'rgba(56,189,248,0.10)';
+                ctx.lineWidth = 0.7;
+                [-60, -45, -30, -15, 0, 15, 30, 45, 60].forEach(lat => {
+                    const laR = lat * Math.PI / 180;
+                    const yr = cy - R * Math.sin(laR);
+                    const xr = R * Math.cos(laR);
+                    ctx.beginPath();
+                    ctx.ellipse(cx, yr, xr, xr * 0.12, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                });
+
+                // Longitude arcs (great-circle lines sampled at many points and rotated)
+                for (let lonDeg = 0; lonDeg < 360; lonDeg += 30) {
+                    const loR0 = lonDeg * Math.PI / 180 + rotation;
+                    // Only draw if roughly facing viewer
+                    const midZ = Math.cos(0) * Math.cos(loR0);
+                    const vis = Math.cos(0) * Math.cos(loR0 + Math.PI);
+                    ctx.strokeStyle = 'rgba(56,189,248,0.08)';
+                    ctx.lineWidth = 0.7;
+                    ctx.beginPath();
+                    let started = false;
+                    for (let lat = -90; lat <= 90; lat += 6) {
+                        const { x, y, z } = project(lat, lonDeg * Math.PI / 180 * (180 / Math.PI), cx, cy, R);
+                        // Recalculate properly
+                        const laR2 = lat * Math.PI / 180;
+                        const loR2 = lonDeg * Math.PI / 180 + rotation;
+                        const px = cx + R * Math.cos(laR2) * Math.sin(loR2);
+                        const py = cy - R * Math.sin(laR2);
+                        const pz = Math.cos(laR2) * Math.cos(loR2);
+                        if (pz < 0) { started = false; continue; }
+                        if (!started) { ctx.moveTo(px, py); started = true; }
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.stroke();
+                }
+
+                ctx.restore(); // end clip
+
+                // 4 ─ City dots on globe surface
+                const allCities = [...CITIES, ...OPPOSITE_CITIES];
+                allCities.forEach(city => {
+                    const laR = city.lat * Math.PI / 180;
+                    const loR = city.lon * Math.PI / 180 + rotation;
+                    const px = cx + R * Math.cos(laR) * Math.sin(loR);
+                    const py = cy - R * Math.sin(laR);
+                    const pz = Math.cos(laR) * Math.cos(loR);
+                    if (pz < 0.05) return; // behind or edge of globe
+
+                    const dotR = 1.5 + pz * 2.5;
+                    const dotA = 0.3 + pz * 0.7;
+                    ctx.save();
+                    ctx.shadowColor = '#38BDF8';
+                    ctx.shadowBlur = 8 * pz;
+                    ctx.beginPath();
+                    ctx.arc(px, py, dotR, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(56,189,248,${dotA})`;
+                    ctx.fill();
+                    // White core
+                    ctx.beginPath();
+                    ctx.arc(px, py, dotR * 0.4, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255,255,255,${dotA * 0.9})`;
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                // 5 ─ Flight arcs between city pairs
+                arcs = arcs.filter(a => !(a.phase === 'fade' && a.alpha <= 0));
+                maintainArcs(); // always keep exactly 2 planes active
+                arcs.forEach(a => {
+                    const laR1 = a.c1.lat * Math.PI / 180;
+                    const loR1 = a.c1.lon * Math.PI / 180 + rotation;
+                    const x1 = cx + R * Math.cos(laR1) * Math.sin(loR1);
+                    const y1 = cy - R * Math.sin(laR1);
+                    const z1 = Math.cos(laR1) * Math.cos(loR1);
+
+                    const laR2 = a.c2.lat * Math.PI / 180;
+                    const loR2 = a.c2.lon * Math.PI / 180 + rotation;
+                    const x2 = cx + R * Math.cos(laR2) * Math.sin(loR2);
+                    const y2 = cy - R * Math.sin(laR2);
+                    const z2 = Math.cos(laR2) * Math.cos(loR2);
+
+                    // Control point: pulled toward viewer (above the globe surface)
+                    const mx = (x1 + x2) / 2;
+                    const my = (y1 + y2) / 2;
+                    const dist = Math.hypot(x2 - x1, y2 - y1);
+                    const cpX = mx + (cx - mx) * 0.12;
+                    const cpY = my - dist * 0.28 - R * 0.08;
+
+                    if (a.phase === 'grow') {
+                        a.prog += dt * 0.0007;
+                        a.alpha = Math.min(a.prog * 3, 0.85);
+                        if (a.prog >= 1) a.phase = 'hold';
+                    } else if (a.phase === 'hold') {
+                        a.holdT = (a.holdT || 0) + dt;
+                        if (a.holdT > 800) a.phase = 'fade';
+                    } else {
+                        a.alpha -= dt * 0.0012;
+                    }
+
+                    const t = Math.min(a.prog, 1);
+                    const steps = Math.max(2, Math.floor(t * 50));
+
+                    // Check if airplane's current position is visible
+                    const curLa = a.c1.lat + t * (a.c2.lat - a.c1.lat);
+                    const curLo = a.c1.lon + t * (a.c2.lon - a.c1.lon);
+                    const curZ = Math.cos(curLa * Math.PI / 180) * Math.cos(curLo * Math.PI / 180 + rotation);
+                    const isVisible = curZ >= -0.05;
+
+                    // Draw arc trail chunk by chunk based on Z visibility
+                    ctx.save();
+                    ctx.setLineDash([5, 6]);
+                    ctx.strokeStyle = `rgba(56,189,248,${a.alpha * 0.55})`;
+                    ctx.lineWidth = 1.2;
+                    ctx.shadowColor = '#38BDF8';
+                    ctx.shadowBlur = 7;
+                    ctx.beginPath();
+
+                    let started = false;
+                    for (let i = 0; i <= steps; i++) {
+                        const ti = (i / steps) * t;
+                        const tempLa = a.c1.lat + ti * (a.c2.lat - a.c1.lat);
+                        const tempLo = a.c1.lon + ti * (a.c2.lon - a.c1.lon);
+                        const tempZ = Math.cos(tempLa * Math.PI / 180) * Math.cos(tempLo * Math.PI / 180 + rotation);
+
+                        if (tempZ < -0.05) {
+                            started = false;
+                            continue;
+                        }
+
+                        const bx = (1 - ti) * (1 - ti) * x1 + 2 * (1 - ti) * ti * cpX + ti * ti * x2;
+                        const by = (1 - ti) * (1 - ti) * y1 + 2 * (1 - ti) * ti * cpY + ti * ti * y2;
+
+                        if (!started) {
+                            ctx.moveTo(bx, by);
+                            started = true;
+                        } else {
+                            ctx.lineTo(bx, by);
+                        }
+                    }
+                    ctx.stroke();
+
+                    // Travelling Airplane at arc tip
+                    if (a.phase === 'grow' && isVisible) {
+                        // calculate position slightly ahead/behind to get tangent slope vector
+                        const tEps = 0.01;
+                        let tNext = t + tEps;
+                        let tPrev = t;
+                        if (tNext > 1) {
+                            tNext = 1;
+                            tPrev = 0.99;
+                        }
+
+                        const bx = (1 - tPrev) * (1 - tPrev) * x1 + 2 * (1 - tPrev) * tPrev * cpX + tPrev * tPrev * x2;
+                        const by = (1 - tPrev) * (1 - tPrev) * y1 + 2 * (1 - tPrev) * tPrev * cpY + tPrev * tPrev * y2;
+                        const nx = (1 - tNext) * (1 - tNext) * x1 + 2 * (1 - tNext) * tNext * cpX + tNext * tNext * x2;
+                        const ny = (1 - tNext) * (1 - tNext) * y1 + 2 * (1 - tNext) * tNext * cpY + tNext * tNext * y2;
+
+                        // Calculate angle directly (removed the 180 flip)
+                        const angle = Math.atan2(ny - by, nx - bx);
+
+                        ctx.save();
+                        // Place plane at precise 't' position
+                        const px = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * cpX + t * t * x2;
+                        const py = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * cpY + t * t * y2;
+                        ctx.translate(px, py);
+                        ctx.rotate(angle);
+
+                        // Draw simple airplane polygon facing right
+                        ctx.beginPath();
+                        ctx.moveTo(8, 0);       // nose
+                        ctx.lineTo(2, 2);       // body top
+                        ctx.lineTo(-4, 7);      // wing bottom
+                        ctx.lineTo(-6, 7);      // wing trailing
+                        ctx.lineTo(-3, 1);      // body bottom
+                        ctx.lineTo(-7, 1);      // tail start
+                        ctx.lineTo(-10, 4);     // tail top
+                        ctx.lineTo(-11, 4);     // tail end
+                        ctx.lineTo(-9, 0);      // back center
+                        ctx.lineTo(-11, -4);    // tail bottom
+                        ctx.lineTo(-10, -4);    // tail bottom start
+                        ctx.lineTo(-7, -1);     // body top back
+                        ctx.lineTo(-3, -1);     // body top mid
+                        ctx.lineTo(-6, -7);     // wing top trailing
+                        ctx.lineTo(-4, -7);     // wing top leading
+                        ctx.lineTo(2, -2);      // body bottom
+                        ctx.closePath();
+
+                        ctx.fillStyle = `rgba(255,255,255,${a.alpha})`;
+                        ctx.shadowColor = '#38BDF8';
+                        ctx.shadowBlur = 10;
+                        ctx.fill();
+                        ctx.restore();
+                    }
+
+                    // On landing (first frame of 'hold' phase), spawn the popup
+                    if (a.phase === 'hold' && !a.hasPopup) {
+                        a.hasPopup = true;
+                        if (z2 >= -0.05) { // Only spawn if destination is visible
+                            createPopup(a.c2);
+                        }
+                    }
+                    ctx.restore();
+                });
+
+                // 6 ─ Update and render active Popups
+                popups = popups.filter(p => {
+                    p.t += dt; // lifecycle timer
+
+                    // If old, trigger fade out
+                    if (p.t > 4000 && p.el.style.opacity === '1') {
+                        p.el.style.opacity = '0';
+                    }
+
+                    // If fully dead, remove from DOM
+                    if (p.t > 4500) {
+                        if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
+                        return false;
+                    }
+
+                    // Project 3D lat/lon to 2D screen pos
+                    const laR = p.city.lat * Math.PI / 180;
+                    const loR = p.city.lon * Math.PI / 180 + rotation;
+                    const px = cx + R * Math.cos(laR) * Math.sin(loR);
+                    const py = cy - R * Math.sin(laR);
+                    const pz = Math.cos(laR) * Math.cos(loR);
+
+                    // If behind globe, hide instantly
+                    if (pz < 0.0) {
+                        p.el.style.display = 'none';
+                    } else {
+                        p.el.style.display = 'flex';
+                        p.el.style.left = `${px}px`;
+                        p.el.style.top = `${py}px`;
+                        // Slight scale based on Z
+                        const scale = 0.85 + (pz * 0.15);
+                        p.el.style.transform = `translate(-50%, -100%) scale(${scale})`;
+                        p.el.style.zIndex = Math.floor(pz * 100);
+                    }
+
+                    return true;
+                });
+
+                requestAnimationFrame(draw);
+            }
+            requestAnimationFrame(draw);
+        })();
+    </script>
+
+    <script src="navbar.js"></script>
+
+</body>
+
+</html>
