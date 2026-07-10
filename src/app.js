@@ -8,8 +8,8 @@ const MongoStore = require('connect-mongo');
 const passport = require('passport');
 
 // Start-up Environment Variable Validation
-const REQUIRED_ENV_VARS = ['MONGO_URI', 'PORT', 'AI_BACKEND_URL', 'GEMINI_API_KEY'];
-const OPTIONAL_ENV_VARS = ['SESSION_SECRET', 'UNSPLASH_ACCESS_KEY', 'ORS_API_KEY', 'OPENWEATHERMAP_API_KEY', 'NEWS_API_KEY'];
+const REQUIRED_ENV_VARS = ['MONGO_URI', 'AI_BACKEND_URL'];
+const OPTIONAL_ENV_VARS = ['PORT', 'SESSION_SECRET', 'UNSPLASH_ACCESS_KEY', 'ORS_API_KEY', 'OPENWEATHERMAP_API_KEY', 'NEWS_API_KEY', 'GEMINI_API_KEY'];
 
 console.log('🔍 [JourneyAI Startup] Checking environment variables...');
 const missingRequired = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
