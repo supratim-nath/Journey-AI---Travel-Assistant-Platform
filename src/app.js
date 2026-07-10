@@ -152,7 +152,8 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // 3. AI Intelligence Proxy (Avoids CORS and hardcoded Python URLs in frontend)
-const AI_BACKEND_URL = process.env.AI_BACKEND_URL || 'http://localhost:8000';
+const raw_ai_url = process.env.AI_BACKEND_URL || 'http://localhost:8000';
+const AI_BACKEND_URL = raw_ai_url.endsWith('/') ? raw_ai_url.slice(0, -1) : raw_ai_url;
 
 const rateLimits = {};
 
