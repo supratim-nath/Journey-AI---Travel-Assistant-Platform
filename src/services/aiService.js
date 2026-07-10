@@ -7,7 +7,7 @@ exports.generateItinerary = async ({ destination, days, budget, vibe, traveler_t
         const raw_ai_url = process.env.AI_BACKEND_URL || 'http://localhost:8000';
         const AI_URL = raw_ai_url.endsWith('/') ? raw_ai_url.slice(0, -1) : raw_ai_url;
         const controller = new AbortController();
-        const aiTimeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+        const aiTimeout = setTimeout(() => controller.abort(), 10000); // 10s timeout to prevent Render router timeouts
 
         const response = await fetch(`${AI_URL}/generate-itinerary`, {
             method: "POST",
