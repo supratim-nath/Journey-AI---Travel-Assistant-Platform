@@ -141,8 +141,14 @@ mongoStore.on('error', function (error) {
 
 // A hybrid, resilient session store wrapper that delegates to connect-mongo
 // if MongoDB is online and ready, otherwise falls back to MemoryStore instantly.
-const resilientStore = {
-    get: (sid, cb) => {
+const Store = session.Store;
+
+class ResilientStore extends Store {
+    constructor() {
+        super();
+    }
+
+    get(sid, cb) {
         if (mongoose.connection.readyState === 1) {
             mongoStore.get(sid, (err, sess) => {
                 if (err) return memoryStore.get(sid, cb);
@@ -151,8 +157,9 @@ const resilientStore = {
         } else {
             memoryStore.get(sid, cb);
         }
-    },
-    set: (sid, sess, cb) => {
+    }
+
+    set(sid, sess, cb) {
         if (mongoose.connection.readyState === 1) {
             mongoStore.set(sid, sess, (err) => {
                 if (err) return memoryStore.set(sid, sess, cb);
@@ -161,8 +168,9 @@ const resilientStore = {
         } else {
             memoryStore.set(sid, sess, cb);
         }
-    },
-    destroy: (sid, cb) => {
+    }
+
+    destroy(sid, cb) {
         if (mongoose.connection.readyState === 1) {
             mongoStore.destroy(sid, (err) => {
                 if (err) return memoryStore.destroy(sid, cb);
@@ -171,8 +179,9 @@ const resilientStore = {
         } else {
             memoryStore.destroy(sid, cb);
         }
-    },
-    touch: (sid, sess, cb) => {
+    }
+
+    touch(sid, sess, cb) {
         if (mongoose.connection.readyState === 1) {
             if (typeof mongoStore.touch === 'function') {
                 mongoStore.touch(sid, sess, (err) => {
@@ -190,7 +199,9 @@ const resilientStore = {
             }
         }
     }
-};
+}
+
+const resilientStore = new ResilientStore();
 
 app.use(session({
     name: 'wanderai.sid', // custom name instead of default connect.sid
