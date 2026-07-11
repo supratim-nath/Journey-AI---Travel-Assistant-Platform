@@ -114,6 +114,7 @@ if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1); // enable trust proxy for cloud load balancers (Render, Railway, etc.)
 }
 
+const memoryStore = new session.MemoryStore();
 const mongoStore = MongoStore.create({
     clientPromise: new Promise((resolve, reject) => {
         if (mongoose.connection.readyState === 1) {
@@ -138,12 +139,65 @@ mongoStore.on('error', function (error) {
     console.warn('\n⚠️ Session Store Warning: Cannot connect to MongoDB. Express will fallback to MemoryStore-like behavior for session handling to prevent request hanging.');
 });
 
+// A hybrid, resilient session store wrapper that delegates to connect-mongo
+// if MongoDB is online and ready, otherwise falls back to MemoryStore instantly.
+const resilientStore = {
+    get: (sid, cb) => {
+        if (mongoose.connection.readyState === 1) {
+            mongoStore.get(sid, (err, sess) => {
+                if (err) return memoryStore.get(sid, cb);
+                cb(null, sess);
+            });
+        } else {
+            memoryStore.get(sid, cb);
+        }
+    },
+    set: (sid, sess, cb) => {
+        if (mongoose.connection.readyState === 1) {
+            mongoStore.set(sid, sess, (err) => {
+                if (err) return memoryStore.set(sid, sess, cb);
+                if (cb) cb();
+            });
+        } else {
+            memoryStore.set(sid, sess, cb);
+        }
+    },
+    destroy: (sid, cb) => {
+        if (mongoose.connection.readyState === 1) {
+            mongoStore.destroy(sid, (err) => {
+                if (err) return memoryStore.destroy(sid, cb);
+                if (cb) cb();
+            });
+        } else {
+            memoryStore.destroy(sid, cb);
+        }
+    },
+    touch: (sid, sess, cb) => {
+        if (mongoose.connection.readyState === 1) {
+            if (typeof mongoStore.touch === 'function') {
+                mongoStore.touch(sid, sess, (err) => {
+                    if (err) return memoryStore.touch ? memoryStore.touch(sid, sess, cb) : (cb && cb());
+                    if (cb) cb();
+                });
+            } else {
+                if (cb) cb();
+            }
+        } else {
+            if (memoryStore.touch) {
+                memoryStore.touch(sid, sess, cb);
+            } else {
+                if (cb) cb();
+            }
+        }
+    }
+};
+
 app.use(session({
     name: 'wanderai.sid', // custom name instead of default connect.sid
     secret: process.env.SESSION_SECRET || 'wander_ai_fallback_secret',
     resave: false,
     saveUninitialized: false,
-    store: mongoStore,
+    store: resilientStore,
     rolling: true, // refreshes the session on each request
     cookie: {
         maxAge: 1000 * 60 * 60 * 48, // 48 hours

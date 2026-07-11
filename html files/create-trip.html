@@ -370,7 +370,16 @@
                     },
                     body: JSON.stringify(tripData)
                 });
-                const result = await response.json();
+                
+                let result;
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    result = await response.json();
+                } else {
+                    const rawText = await response.text();
+                    console.error("Non-JSON Response received:", rawText);
+                    throw new Error(`Server returned HTML/Text (HTTP ${response.status}). Details: ${rawText.slice(0, 100)}...`);
+                }
 
                 if (result.success) {
                     // SUCCESS: Store the generated data in sessionStorage
@@ -388,7 +397,10 @@
                 }
             } catch (error) {
                 console.error("Fetch error:", error);
-                showNotification("Server connection failed.", 'error');
+                const msg = error.message && error.message.length < 150 
+                    ? `Server connection failed: ${error.message}` 
+                    : "Server connection failed. Ritu is currently offline.";
+                showNotification(msg, 'error');
                 resetButton();
             }
         }
