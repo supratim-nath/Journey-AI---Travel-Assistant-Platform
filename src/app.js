@@ -115,21 +115,27 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const mongoStore = MongoStore.create({
-    clientPromise: new Promise((resolve) => {
+    clientPromise: new Promise((resolve, reject) => {
         if (mongoose.connection.readyState === 1) {
             resolve(mongoose.connection.getClient());
         } else {
-            mongoose.connection.once('connected', () => {
+            const onConnected = () => {
                 resolve(mongoose.connection.getClient());
-            });
+            };
+            mongoose.connection.once('connected', onConnected);
+            
+            // Timeout after 5 seconds to prevent hanging the Express requests
+            setTimeout(() => {
+                mongoose.connection.off('connected', onConnected);
+                reject(new Error("MongoDB connection timeout for session store"));
+            }, 5000);
         }
     }),
     ttl: 2 * 24 * 60 * 60 // 2 days
 });
 
 mongoStore.on('error', function (error) {
-    console.error('\n❌ Session Store Error: Cannot connect to MongoDB!');
-    console.error('Make sure your local MongoDB service is actively running.\n');
+    console.warn('\n⚠️ Session Store Warning: Cannot connect to MongoDB. Express will fallback to MemoryStore-like behavior for session handling to prevent request hanging.');
 });
 
 app.use(session({
