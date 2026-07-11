@@ -1,11 +1,10 @@
 import re
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from google.api_core import exceptions as google_exceptions
 from backend.schemas import ChatRequest, ChatResponse, ItineraryUpdate
 from backend.schemas import ItineraryRequest, ItineraryResponse
 from backend.schemas import SuggestionRequest, SuggestionResponse
-from backend.agent import chat_with_agent, get_curated_suggestions
+from backend.agent import chat_with_agent, get_curated_suggestions, GeminiQuotaExhaustedError
 from backend.itinerary_agent import generate_itinerary
 from backend.cache import TTLCache, SingleFlight
 
@@ -62,7 +61,7 @@ def chat(request: ChatRequest):
             request.current_itinerary,
             request.history
         )
-    except google_exceptions.ResourceExhausted as q_err:
+    except GeminiQuotaExhaustedError as q_err:
         raise HTTPException(status_code=429, detail="Gemini API rate limit exceeded. Ritu is catching her breath! Please retry in 60 seconds.")
     except Exception as e:
         import logging
@@ -128,7 +127,7 @@ def create_itinerary(request: ItineraryRequest):
         # Write Cache
         itinerary_cache.set(cache_key, result)
         return ItineraryResponse(itinerary=result)
-    except google_exceptions.ResourceExhausted as q_err:
+    except GeminiQuotaExhaustedError as q_err:
         raise HTTPException(status_code=429, detail="Gemini API rate limit exceeded. Ritu is catching her breath! Please retry in 60 seconds.")
     except Exception as e:
         import logging
@@ -154,7 +153,7 @@ def compute_suggestions(request: SuggestionRequest):
         # Write Cache
         suggestions_cache.set(cache_key, result)
         return SuggestionResponse(**result)
-    except google_exceptions.ResourceExhausted as q_err:
+    except GeminiQuotaExhaustedError as q_err:
         raise HTTPException(status_code=429, detail="Gemini API rate limit exceeded. Ritu is catching her breath! Please retry in 60 seconds.")
     except Exception as e:
         import logging

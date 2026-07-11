@@ -5,9 +5,13 @@ import time
 import random
 from google import genai
 from google.genai import types
-from google.api_core import exceptions as google_exceptions
+from google.genai import errors as genai_errors
 from dotenv import load_dotenv
 from backend.memory import get_history, add_message
+
+class GeminiQuotaExhaustedError(Exception):
+    """Custom exception raised when all configured Gemini API keys are rate-limited."""
+    pass
 
 # Load environment variables
 load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
@@ -735,31 +739,46 @@ def _generate_with_fallback(contents, config=None, current_itinerary=None, custo
                         )
                         if response.text:
                             return response.text
-                    except google_exceptions.ResourceExhausted as q_err:
-                        # HTTP 429 - Resource Exhausted / Rate limit: Do NOT retry on this key, cycle immediately
-                        last_error = f"Gemini API rate limit exceeded on model {model}."
-                        is_rate_limited = True
-                        print(f"⚠️ [Agent] Key prefix {api_key[:8]} rate-limited (429) on model {model}: {q_err}. Cycling to next key...")
-                        break # Break retry loop to try the next key
-                    except (google_exceptions.ServiceUnavailable, google_exceptions.DeadlineExceeded, ConnectionError) as trans_err:
-                        # Transient errors: retry with exponential backoff and jitter
-                        last_error = str(trans_err)
+                    except genai_errors.APIError as q_err:
+                        if q_err.code == 429:
+                            # HTTP 429 - Resource Exhausted / Rate limit: Do NOT retry on this key, cycle immediately
+                            last_error = f"Gemini API rate limit exceeded on model {model}."
+                            is_rate_limited = True
+                            print(f"⚠️ [Agent] Key prefix {api_key[:8]} rate-limited (429) on model {model}: {q_err}. Cycling to next key...")
+                            break # Break retry loop to try the next key
+                        elif q_err.code in (502, 503, 504):
+                            # Transient errors: retry with exponential backoff and jitter
+                            last_error = str(q_err)
+                            if attempt < max_retries:
+                                sleep_time = (2 ** attempt) + random.uniform(0.1, 1.0)
+                                print(f"🔄 [Agent] Transient error: {q_err}. Retrying in {sleep_time:.2f}s...")
+                                time.sleep(sleep_time)
+                            else:
+                                print(f"❌ [Agent] Transient error retries exhausted on model {model}: {q_err}")
+                                break
+                        else:
+                            last_error = str(q_err)
+                            print(f"❌ [Agent] API error {q_err.code} on model {model}: {q_err.message}")
+                            break
+                    except (ConnectionError, TimeoutError) as net_err:
+                        # Network failures: retry
+                        last_error = str(net_err)
                         if attempt < max_retries:
                             sleep_time = (2 ** attempt) + random.uniform(0.1, 1.0)
-                            print(f"🔄 [Agent] Transient error: {trans_err}. Retrying in {sleep_time:.2f}s...")
+                            print(f"🔄 [Agent] Network error: {net_err}. Retrying in {sleep_time:.2f}s...")
                             time.sleep(sleep_time)
                         else:
-                            print(f"❌ [Agent] Transient error retries exhausted on model {model}: {trans_err}")
+                            print(f"❌ [Agent] Network error retries exhausted on model {model}: {net_err}")
                             break
                     except Exception as other_err:
                         last_error = str(other_err)
                         print(f"❌ [Agent] Model {model} failed on key prefix {api_key[:8]}...: {last_error}")
                         break
     
-    # If we are rate limited on all keys, raise a ResourceExhausted exception so route controllers know
+    # If we are rate limited on all keys, raise a GeminiQuotaExhaustedError so route controllers know
     if is_rate_limited:
         print("🚨 [Agent] All API keys have exceeded their Gemini quota rate limit.")
-        raise google_exceptions.ResourceExhausted(f"All configured Gemini API keys are rate limited. {last_error}")
+        raise GeminiQuotaExhaustedError(f"All configured Gemini API keys are rate limited. {last_error}")
         
     # Otherwise fallback to mock generation
     print("[Agent] Falling back to Mock Generation...")
